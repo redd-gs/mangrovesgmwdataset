@@ -6,6 +6,28 @@ from dotenv import load_dotenv
 load_dotenv()
 
 class Config:
+    # Attributs de classe (compatibilité tests accédant directement à Config.PG_USER, etc.)
+    PG_HOST = os.getenv("PGHOST", "localhost")
+    PG_PORT = int(os.getenv("PGPORT", "5432"))
+    PG_DB = os.getenv("PGDATABASE", "global_mangrove_dataset")
+    PG_USER = os.getenv("PGUSER", "postgres")
+    PG_PASSWORD = os.getenv("PGPASSWORD", "mangrovesondra")
+    PG_SCHEMA = os.getenv("PGSCHEMA", "public")
+    PG_TABLE = os.getenv("PGTABLE", "gmw_2016_v2")
+
+    SH_CLIENT_ID = os.getenv("SH_CLIENT_ID", "296047b6-fdf8-4cf1-b5b3-25bc57cda004")
+    SH_CLIENT_SECRET = os.getenv("SH_CLIENT_SECRET", "eAx3zVObhObgW6Om9t7PY5TsP6J0GD3b")
+    SH_INSTANCE_ID = os.getenv("SH_INSTANCE_ID", "975be0e1-6eed-4cf0-ab03-cdb6722aab80")
+
+    TIME_INTERVAL = os.getenv("TIME_INTERVAL", "2024-06-01/2025-06-10")
+    MAX_CLOUD_COVER = int(os.getenv("MAX_CLOUD_COVER", "20"))
+    IMAGE_RESOLUTION = int(os.getenv("IMAGE_RESOLUTION", "10"))
+    PATCH_SIZE_M = int(os.getenv("PATCH_SIZE_M", "2048"))
+    MAX_PATCHES = int(os.getenv("MAX_PATCHES", "10"))
+
+    ENHANCEMENT_METHOD = os.getenv("ENHANCEMENT_METHOD", "gamma")
+    GAMMA_VALUE = float(os.getenv("GAMMA_VALUE", "0.9"))
+    CLIP_VALUE = float(os.getenv("CLIP_VALUE", "2.2"))
     def __init__(self):
         # Postgres
         self.PG_HOST = os.getenv("PGHOST", "localhost")
@@ -21,11 +43,11 @@ class Config:
         self.SH_CLIENT_SECRET = os.getenv("SH_CLIENT_SECRET", "eAx3zVObhObgW6Om9t7PY5TsP6J0GD3b")
         self.SH_INSTANCE_ID = os.getenv("SH_INSTANCE_ID", "975be0e1-6eed-4cf0-ab03-cdb6722aab80")  # optionnel
 
-        # Traitement
-        self.TIME_INTERVAL = os.getenv("TIME_INTERVAL", "2024-06-01/2025-06-10")
+        # Traitement (centralisé)
+        self.TIME_INTERVAL = os.getenv("TIME_INTERVAL", "2024-06-01/2025-06-10")  # format 'YYYY-MM-DD/YYYY-MM-DD'
         self.MAX_CLOUD_COVER = int(os.getenv("MAX_CLOUD_COVER", "20"))
         self.IMAGE_RESOLUTION = int(os.getenv("IMAGE_RESOLUTION", "10"))
-        self.PATCH_SIZE_M = int(os.getenv("PATCH_SIZE_M", "2560"))
+        self.PATCH_SIZE_M = int(os.getenv("PATCH_SIZE_M", "512"))
         self.MAX_PATCHES = int(os.getenv("MAX_PATCHES", "10"))
 
         # Améliorations
@@ -44,6 +66,16 @@ class Config:
             if d.exists() and not d.is_dir():
                 raise RuntimeError(f"[ERREUR] {d} existe mais n'est pas un dossier. Supprime ce fichier.")
             d.mkdir(parents=True, exist_ok=True)
+
+    @property
+    def time_interval_tuple(self):
+        """Retourne (start, end) en chaînes YYYY-MM-DD à partir de TIME_INTERVAL."""
+        raw = self.TIME_INTERVAL.strip()
+        if "/" in raw:
+            a, b = raw.split("/", 1)
+        else:
+            a = b = raw
+        return a.strip(), b.strip()
             
     @property
     def pg_dsn(self):

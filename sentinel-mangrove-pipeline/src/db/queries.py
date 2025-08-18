@@ -8,6 +8,7 @@ from config.settings import Config
 import geopandas as gpd
 from sentinelhub import BBox, CRS, SentinelHubRequest, DataCollection, MimeType, bbox_to_dimensions
 from sentinel.download import TRUE_COLOR_EVALSCRIPT
+from config.settings import settings
 
 
 def get_sample_geometries(engine, limit=1):
@@ -42,9 +43,11 @@ def create_valid_bbox(geometry, size_m):
         print(f"❌ Erreur création BBox: {str(e)}")
         return None
 
-def format_time_interval(interval_str):
-    """Convertit une chaîne 'YYYY-MM-DD/YYYY-MM-DD' en tuple de dates ISO 8601"""
-    start_str, end_str = interval_str.split('/')
+def _interval_iso8601():
+    """Construit un intervalle ISO 8601 (startZ, endZ) à partir du settings centralisé."""
+    cfg = settings()
+    start_str, end_str = cfg.time_interval_tuple
+    # On inclut toute la journée de fin (23:59:59) pour les requêtes STAC si besoin
     start = datetime.strptime(start_str, "%Y-%m-%d").replace(tzinfo=timezone.utc)
     end = datetime.strptime(end_str, "%Y-%m-%d").replace(tzinfo=timezone.utc) + timedelta(days=1) - timedelta(seconds=1)
     return (start.strftime("%Y-%m-%dT%H:%M:%SZ"), end.strftime("%Y-%m-%dT%H:%M:%SZ"))

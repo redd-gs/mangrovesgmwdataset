@@ -1,7 +1,7 @@
 import numpy as np
 from PIL import Image, ImageEnhance
 
-def enhance_image(image_array, brightness_factor=1.2, contrast_factor=1.2):
+def enhance_image(image_array, brightness_factor=1.2, contrast_factor=1.2, gamma=None):
     """
     Enhance the image quality by adjusting brightness and contrast.
 
@@ -13,8 +13,14 @@ def enhance_image(image_array, brightness_factor=1.2, contrast_factor=1.2):
     Returns:
     - Enhanced image as a numpy array.
     """
-    # Convert the numpy array to a PIL Image
-    image = Image.fromarray((image_array * 255).astype(np.uint8))
+    # Validation basique
+    if image_array is None:
+        raise ValueError("image_array is None")
+    if not isinstance(image_array, np.ndarray) or image_array.ndim != 3 or image_array.shape[2] != 3:
+        raise ValueError("image_array must be a 3D numpy array with 3 channels")
+
+    # Convert the numpy array (assumed float 0-1) to a PIL Image
+    image = Image.fromarray((np.clip(image_array, 0, 1) * 255).astype(np.uint8))
 
     # Enhance brightness
     enhancer = ImageEnhance.Brightness(image)
@@ -26,6 +32,9 @@ def enhance_image(image_array, brightness_factor=1.2, contrast_factor=1.2):
 
     # Convert back to numpy array
     enhanced_image_array = np.array(image) / 255.0
+    # Gamma correction (appliquée en float)
+    if gamma is not None:
+        enhanced_image_array = np.power(np.clip(enhanced_image_array, 1e-6, 1), gamma)
     return enhanced_image_array
 
 def batch_process_images(image_arrays, brightness_factor=1.2, contrast_factor=1.2):
