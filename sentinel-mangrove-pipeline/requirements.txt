@@ -1,16 +1,16 @@
-import numpy
-import pandas
-import geopandas
-import sqlalchemy
-import sentinelhub
-import pillow
-import matplotlib
-import rasterio
-import psycopg2
-import requests
-import tqdm
-import imageio
-import scikit-image
-import opencv-python
-import pyproj
-import shapely
+numpy
+pandas
+geopandas
+sqlalchemy
+sentinelhub
+pillow
+matplotlib
+rasterio
+psycopg2
+requests
+tqdm
+imageio
+scikit-image
+opencv-python
+pyproj
+shapely

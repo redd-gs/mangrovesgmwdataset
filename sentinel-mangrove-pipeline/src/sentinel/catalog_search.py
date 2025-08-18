@@ -1,5 +1,7 @@
 import os
 from sentinelhub import SentinelHubCatalog, BBox, DataCollection
+from config import settings
+from utils.time import format_time_interval
 
 class CatalogSearch:
     def __init__(self, config):
@@ -38,3 +40,8 @@ class CatalogSearch:
         images = self.search_images(bbox, time_interval, max_cloud_cover)
         # Additional processing or enhancements can be added here
         return images
+
+def build_search_time_interval():
+    cfg = settings()
+    start, end = format_time_interval(cfg.TIME_INTERVAL)
+    return (start, end)
