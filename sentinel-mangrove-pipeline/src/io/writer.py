@@ -1,3 +1,7 @@
+import json
+from tkinter import Image
+
+
 def write_image(image, output_path):
     """Writes the processed image to the specified output path."""
     try:

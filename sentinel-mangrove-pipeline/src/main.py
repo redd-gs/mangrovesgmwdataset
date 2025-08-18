@@ -1,78 +1,57 @@
-import os
+from typing import List
+from shapely import wkb
+from sqlalchemy import text
+from sentinelhub import BBox, CRS
+from sentinelhub.time_utils import parse_time_interval
 
-from db.queries import format_time_interval, get_sample_geometries
-if "PYTHONPATH" not in os.environ:
-    import sys
-    from pathlib import Path
-    sys.path.append(str(Path.cwd() / "src"))
+from config.settings import settings
+from core.context import get_engine
+from sentinel.download import run_download
 
-from config import settings
-cfg = settings()
-cfg.OUTPUT_DIR
 
-from pathlib import Path
-from datetime import datetime, timedelta, timezone
-from sentinelhub import SHConfig, BBox, CRS, MimeType, SentinelHubRequest, SentinelHubCatalog, DataCollection, bbox_to_dimensions
-import geopandas as gpd
-import numpy as np
-from shapely.geometry import shape
-from sqlalchemy import create_engine, text
-from config.settings import Config
-from db.connection import create_db_connection
-from sentinel.auth import authenticate
-from sentinel.catalog_search import search_images
-from sentinel.download import download_image
-from processing.bbox import create_valid_bbox
-from processing.enhancements import enhance_image
-from io.writer import save_image
+def fetch_geometries(limit: int) -> List:
+    """
+    Récupère des géométries WGS84.
+    Si ton SRID n'est pas 4326, adapte en ajoutant ST_Transform.
+    """
+    cfg = settings()
+    full_table = f'"{cfg.PG_SCHEMA}"."{cfg.PG_TABLE}"'
+    sql = text(f"SELECT ST_AsBinary(geom) FROM {full_table} LIMIT :lim")
+    rows = []
+    with get_engine().connect() as conn:
+        for (gbytes,) in conn.execute(sql, {"lim": limit}):
+            if gbytes:
+                geom = wkb.loads(bytes(gbytes))
+                if not geom.is_empty:
+                    rows.append(geom)
+    return rows
+
+
+def geom_to_bbox(geom) -> BBox:
+    minx, miny, maxx, maxy = geom.bounds
+    return BBox([minx, miny, maxx, maxy], crs=CRS.WGS84)
+
 
 def main():
     cfg = settings()
-    print("DB:", cfg.pg_dsn)
-    print("Sentinel client id present:", bool(cfg.SH_CLIENT_ID))
-    print("🚀 Starting Sentinel-2 Mangrove Pipeline")
-    
-    # Setup database connection
-    engine = create_db_connection()
-    
-    # Authenticate with Sentinel Hub
-    cfg = authenticate()
-    
-    # Get sample geometries from the database
-    samples = get_sample_geometries(engine, Config.MAX_PATCHES)
-    
-    if not samples:
-        print("❌ No geometries found!")
+    print(f"[INFO] DB: {cfg.pg_dsn}")
+    print(f"[INFO] OUTPUT_DIR: {cfg.OUTPUT_DIR}")
+
+    geoms = fetch_geometries(limit=cfg.MAX_PATCHES)
+    if not geoms:
+        print("[AVERTISSEMENT] Aucune géométrie trouvée.")
         return
-    
-    for gid, geom in samples:
-        print(f"\n🔍 Processing area {gid}")
-        
-        # Create bounding box
-        bbox = create_valid_bbox(geom, Config.PATCH_SIZE_M)
-        if not bbox:
-            continue
-        
-        # Format time interval
-        time_interval = format_time_interval(Config.TIME_INTERVAL)
-        print(f"🕒 Formatted time interval: {time_interval}")
-        
-        # Search for images
-        images = search_images(cfg, bbox, time_interval, Config.MAX_CLOUD_COVER)
-        if not images:
-            print("\n⚠️ No images available for this area/date.")
-            continue
-        
-        # Download and enhance images
-        for image in images:
-            output_file = Config.OUTPUT_DIR / f"mangrove_{gid}_{image['properties']['datetime']}.png"
-            success = download_image(cfg, bbox, time_interval, output_file)
-            if success:
-                enhanced_image = enhance_image(output_file)
-                save_image(enhanced_image, output_file)
-                print(f"✅ Image saved: {output_file}")
-            else:
-                print("❌ Download failed.")
-    
+
+    bboxes = [geom_to_bbox(g) for g in geoms]
+    start_dt, end_dt = parse_time_interval(cfg.TIME_INTERVAL)
+    time_interval = (start_dt.isoformat(), end_dt.isoformat())
+
+    print(f"[INFO] Téléchargement {len(bboxes)} tuiles...")
+    paths = run_download(bboxes, time_interval, prefix="gmw", enhanced=True, workers=1)
+    print(f"[INFO] Succès: {len(paths)} fichiers.")
+    for p in paths:
+        print(f" - {p}")
+
+
 if __name__ == "__main__":
     main()

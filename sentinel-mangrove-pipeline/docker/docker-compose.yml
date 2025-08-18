@@ -16,7 +16,7 @@ services:
 
   sentinel:
     image: python:3.9
-    container_name: sentinel_pipeline
+    container_name: mangrove_dataset_pipeline
     volumes:
       - ./src:/app
       - ./data:/data
