@@ -1,0 +1,40 @@
+set -euo pipefail
+
+[ -f .env ] && { echo "[INFO] .env existe déjà. Supprime-le si tu veux le régénérer."; exit 0; }
+
+read -p "PGHOST [localhost]: " PGHOST; PGHOST=${PGHOST:-localhost}
+read -p "PGPORT [5432]: " PGPORT; PGPORT=${PGPORT:-5432}
+read -p "PGDATABASE: " PGDATABASE
+read -p "PGUSER [postgres]: " PGUSER; PGUSER=${PGUSER:-postgres}
+read -s -p "PGPASSWORD: " PGPASSWORD; echo
+read -p "SH_CLIENT_ID: " SH_CLIENT_ID
+read -s -p "SH_CLIENT_SECRET: " SH_CLIENT_SECRET; echo
+
+cat > .env <<EOF
+PGHOST=$PGHOST
+PGPORT=$PGPORT
+PGDATABASE=$PGDATABASE
+PGUSER=$PGUSER
+PGPASSWORD=$PGPASSWORD
+PGSCHEMA=public
+PGTABLE=gmw_2016_v2
+
+SH_CLIENT_ID=$SH_CLIENT_ID
+SH_CLIENT_SECRET=$SH_CLIENT_SECRET
+SH_INSTANCE_ID=
+
+TIME_INTERVAL=2024-06-01/2025-06-10
+MAX_CLOUD_COVER=20
+IMAGE_RESOLUTION=10
+PATCH_SIZE_M=2560
+MAX_PATCHES=5
+ENHANCEMENT_METHOD=gamma
+GAMMA_VALUE=0.9
+CLIP_VALUE=2.2
+
+OUTPUT_DIR=data/output
+TEMP_DIR=data/temp
+PYTHONPATH=./src
+EOF
+
+echo "[INFO] .env généré."

@@ -1,7 +1,7 @@
 import pytest
+from sqlalchemy import create_engine
 from src.sentinel.catalog_search import search_images
 from src.sentinel.auth import sh_config
-from src.db.connection import create_engine
 from src.config.settings import Config
 
 @pytest.fixture(scope="module")

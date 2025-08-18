@@ -1,3 +1,5 @@
+import numpy as np
+
 def tile_image(image, tile_size):
     """
     Splits the input image into smaller tiles of specified size.

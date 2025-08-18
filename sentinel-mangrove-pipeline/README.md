@@ -56,7 +56,7 @@ sentinel-mangrove-pipeline/
 
 1. **Clone the Repository**
    ```bash
-   git clone <repository-url>
+   git clone https://github.com/redd-gs/mangrovesgmwdataset/tree/master
    cd sentinel-mangrove-pipeline
    ```
 
@@ -100,6 +100,3 @@ Unit tests are provided in the `tests/` directory. You can run the tests to ensu
 ```bash
 pytest tests/
 ```
-
-## License
-This project is licensed under the MIT License. See the LICENSE file for more details.
