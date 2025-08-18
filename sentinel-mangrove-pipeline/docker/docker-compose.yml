@@ -7,7 +7,7 @@ services:
     environment:
       POSTGRES_USER: ${postgres}
       POSTGRES_PASSWORD: ${mangrovesondra}
-      POSTGRES_DB: ${mangrovesondradb}
+      POSTGRES_DB: ${global_mangrove_dataset}
     volumes:
       - pgdata:/var/lib/postgresql/data
       - ./initdb:/docker-entrypoint-initdb.d
