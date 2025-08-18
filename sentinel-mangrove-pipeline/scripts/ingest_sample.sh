@@ -28,3 +28,14 @@ if [ $? -eq 0 ]; then
 else
     echo "Error ingesting sample data."
 fi
+
+SELECT Find_SRID(PG_catalog.current_schema(), 'gmw_2016_v2', 'geom');
+SELECT ST_SRID(geom), ST_Extent(geom) FROM public.gmw_2016_v2 LIMIT 5;
+
+BBox([2.293,48.857,2.298,48.860], crs=CRS.WGS84)
+
+from core.context import get_sh_config
+cfg = get_sh_config()
+print(cfg.sh_client_id, cfg.sh_client_secret[:4]+"***")
+print(img.min(), img.max(), img.mean())
+print("[DEBUG] SH_CLIENT_ID:", settings().SH_CLIENT_ID)

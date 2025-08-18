@@ -15,5 +15,5 @@ scikit-image
 opencv-python
 pyproj
 shapely
-functools
+pytest
 python-dotenv

@@ -31,13 +31,13 @@ fi
 if [ -f "$ROOT_DIR/.env" ]; then
   echo "[INFO] Chargement .env"
   set -a
-  sed 's/\r$//' "$ROOT_DIR/.env" | grep -v '^[[:space:]]*#' > "$ROOT_DIR/.env.__tmp__"
-  # shellcheck disable=SC1091
-  source "$ROOT_DIR/.env.__tmp__"
-  rm -f "$ROOT_DIR/.env.__tmp__"
+  while IFS='=' read -r k v; do
+    [ -z "$k" ] && continue
+    case "$k" in \#*) continue;; esac
+    v="${v%$'\r'}"
+    export "$k"="$v"
+  done < "$ROOT_DIR/.env"
   set +a
-else
-  echo "[AVERTISSEMENT] .env absent (copiez .env.example)"
 fi
 
 echo "[INFO] Répertoire courant: $(pwd)"

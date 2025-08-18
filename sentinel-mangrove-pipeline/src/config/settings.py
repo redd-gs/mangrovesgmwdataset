@@ -39,6 +39,12 @@ class Config:
         self.OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
         self.TEMP_DIR.mkdir(parents=True, exist_ok=True)
 
+    def _ensure_dirs(self):
+        for d in (self.OUTPUT_DIR, self.TEMP_DIR):
+            if d.exists() and not d.is_dir():
+                raise RuntimeError(f"[ERREUR] {d} existe mais n'est pas un dossier. Supprime ce fichier.")
+            d.mkdir(parents=True, exist_ok=True)
+            
     @property
     def pg_dsn(self):
         return f"postgresql://{self.PG_USER}:{self.PG_PASSWORD}@{self.PG_HOST}:{self.PG_PORT}/{self.PG_DB}"
