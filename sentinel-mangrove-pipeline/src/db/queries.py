@@ -1,7 +1,7 @@
 from datetime import datetime, timedelta, timezone
 import numpy as np
 from tkinter import Image
-from matplotlib.pyplot import box
+from shapely.geometry import box
 from numpy import shape
 from sqlalchemy import text
 from config.settings import Config

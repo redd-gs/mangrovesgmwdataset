@@ -1,12 +1,12 @@
-from matplotlib.pyplot import box
+# -*- coding: utf-8 -*-
 import geopandas as gpd
-from pyproj import CRS
-from sentinelhub import BBox
+from shapely.geometry import box
+from sentinelhub import BBox, CRS
 
 def create_valid_bbox(geometry, size_m):
     try:
         if geometry.is_empty:
-            print("⚠️ Géométrie vide!")
+            print("Geometrie vide")
             return None
 
         centroid = geometry.centroid
@@ -18,11 +18,12 @@ def create_valid_bbox(geometry, size_m):
         bbox_wgs84 = gpd.GeoDataFrame(geometry=[bbox_3857], crs="EPSG:3857").to_crs(epsg=4326)
         minx, miny, maxx, maxy = bbox_wgs84.total_bounds
 
-        print(f"🌍 BBox générée: [{minx:.4f}, {miny:.4f}, {maxx:.4f}, {maxy:.4f}]")
+        # Removed emoji to avoid Windows console / source encoding issues.
+        print(f"BBox generee: [{minx:.4f}, {miny:.4f}, {maxx:.4f}, {maxy:.4f}]")
         return BBox([minx, miny, maxx, maxy], crs=CRS.WGS84)
 
     except Exception as e:
-        print(f"❌ Erreur création BBox: {str(e)}")
+        print(f"Erreur creation BBox: {str(e)}")
         return None
 
 def optimize_bbox_creation(geometries, size_m):

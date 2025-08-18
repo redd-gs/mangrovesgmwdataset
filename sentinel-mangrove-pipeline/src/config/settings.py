@@ -19,7 +19,7 @@ class Config:
         # Sentinel Hub
         self.SH_CLIENT_ID = os.getenv("SH_CLIENT_ID", "296047b6-fdf8-4cf1-b5b3-25bc57cda004")
         self.SH_CLIENT_SECRET = os.getenv("SH_CLIENT_SECRET", "eAx3zVObhObgW6Om9t7PY5TsP6J0GD3b")
-        self.SH_INSTANCE_ID = os.getenv("SH_INSTANCE_ID", "")  # optionnel
+        self.SH_INSTANCE_ID = os.getenv("SH_INSTANCE_ID", "975be0e1-6eed-4cf0-ab03-cdb6722aab80")  # optionnel
 
         # Traitement
         self.TIME_INTERVAL = os.getenv("TIME_INTERVAL", "2024-06-01/2025-06-10")
