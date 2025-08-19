@@ -17,8 +17,6 @@ sentinel-mangrove-pipeline/
 │   ├── run_pipeline.sh
 │   ├── ingest_sample.sh
 │   └── optimize_db.sql
-├── notebooks/
-│   └── exploration.ipynb
 ├── src/
 │   ├── main.py
 │   ├── config/
