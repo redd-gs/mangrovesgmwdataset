@@ -9,7 +9,7 @@ class Config:
     # Attributs de classe (compatibilité tests accédant directement à Config.PG_USER, etc.)
     PG_HOST = os.getenv("PGHOST", "localhost")
     PG_PORT = int(os.getenv("PGPORT", "5432"))
-    PG_DB = os.getenv("PGDATABASE", "global_mangrove_dataset")
+    PG_DB = os.getenv("PGDATABASE", "global_mangrove_dataset_2016")
     PG_USER = os.getenv("PGUSER", "postgres")
     PG_PASSWORD = os.getenv("PGPASSWORD", "mangrovesondra")
     PG_SCHEMA = os.getenv("PGSCHEMA", "public")

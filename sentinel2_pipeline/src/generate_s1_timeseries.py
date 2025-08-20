@@ -12,20 +12,15 @@ from config.settings import settings
 # --- CONFIGURATION ---
 cfg = settings()
 
-# Charger le shapefile utilisé pour Sentinel-2 (doit être précisé ici)
-SHAPEFILE_PATH = os.getenv("SHAPEFILE_PATH", "../sentinel2-mangrove-pipeline/data/zone.shp")
-gdf = gpd.read_file(SHAPEFILE_PATH)
 
-# On prend la première géométrie du shapefile
-geom = gdf.geometry.iloc[0]
-bounds = geom.bounds  # (minx, miny, maxx, maxy)
-bbox = BBox(list(bounds), crs=CRS.WGS84)
+# BBox de Pulau Ubin (Singapour) en WGS84
+# minx, miny, maxx, maxy
+bbox = BBox([103.958, 1.396, 104.03, 1.45], crs=CRS.WGS84)
 
 # Paramètres temporels
-start_date = datetime.strptime(cfg.time_interval_tuple[0], "%Y-%m-%d")
+start_date = datetime.strptime("2024-12-01", "%Y-%m-%d")
 period_days = 14
 n_images = 10
-
 dates = [(start_date + timedelta(days=i*period_days)).strftime("%Y-%m-%d") for i in range(n_images)]
 
 # Authentification Sentinel Hub
