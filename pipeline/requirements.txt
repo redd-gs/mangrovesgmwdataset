@@ -17,3 +17,9 @@ pyproj
 shapely
 pytest
 python-dotenv
+ngboost
+scikit-learn
+properscoring
+shap
+scipy
+joblib

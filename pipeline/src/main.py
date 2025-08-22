@@ -1,4 +1,5 @@
 from typing import List
+import os
 from shapely import wkb
 from sqlalchemy import text
 from sentinelhub import BBox, CRS
@@ -8,6 +9,7 @@ from config.settings import settings
 from core.context import get_engine
 from sentinel.download import run_download
 from processing.bbox import create_valid_bbox  # Utiliser une bbox de taille fixe autour du centroïde
+from db.gmw_v3 import generate_bboxes_from_gmw_v3
 
 
 def fetch_geometries(limit: int) -> List:
@@ -61,21 +63,23 @@ def main():
     print(f"[INFO] DB: {cfg.pg_dsn}")
     print(f"[INFO] OUTPUT_DIR: {cfg.OUTPUT_DIR}")
 
-    geoms = fetch_geometries(limit=cfg.MAX_PATCHES)
-    if not geoms:
-        print("[AVERTISSEMENT] Aucune géométrie trouvée.")
-        return
-
-    # Ancien comportement (souvent bbox nulle si géométrie = point) :
-    # bboxes = [geom_to_bbox(g) for g in geoms]
-    # Nouveau : créer une bbox carrée autour du centroïde avec la taille PATCH_SIZE_M
-    bboxes: List[BBox] = []
-    for g in geoms:
-        bb = create_valid_bbox(g, cfg.PATCH_SIZE_M)
-        if bb:
-            bboxes.append(bb)
-        else:
-            print("[AVERTISSEMENT] BBox ignorée (géométrie vide).")
+    # Nouvelle option: si variable d'env USE_GMW_V3=1 on lit directement gmw_v3 et on tuiles les polygones
+    use_gmw_v3 = os.getenv("USE_GMW_V3", "0") in ("1","true","True")
+    if use_gmw_v3:
+        print("[INFO] Mode gmw_v3 activé: génération de tuiles à partir des polygones")
+        bboxes = generate_bboxes_from_gmw_v3(limit_polygons=cfg.MAX_PATCHES*2, max_patches=cfg.MAX_PATCHES, patch_size_m=cfg.PATCH_SIZE_M)
+    else:
+        geoms = fetch_geometries(limit=cfg.MAX_PATCHES)
+        if not geoms:
+            print("[AVERTISSEMENT] Aucune géométrie trouvée.")
+            return
+        bboxes = []
+        for g in geoms:
+            bb = create_valid_bbox(g, cfg.PATCH_SIZE_M)
+            if bb:
+                bboxes.append(bb)
+            else:
+                print("[AVERTISSEMENT] BBox ignorée (géométrie vide).")
 
     if not bboxes:
         print("[ERREUR] Aucune bbox valide générée → arrêt.")
