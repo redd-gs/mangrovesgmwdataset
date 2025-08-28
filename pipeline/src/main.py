@@ -1,5 +1,6 @@
 from typing import List
 import os
+import subprocess
 from shapely import wkb
 from sqlalchemy import text
 from sentinelhub import BBox, CRS
@@ -58,10 +59,42 @@ def geom_to_bbox(geom) -> BBox:
     return BBox([minx, miny, maxx, maxy], crs=CRS.WGS84)
 
 
+def clear_outputs():
+    """Nettoie automatiquement les dossiers de sortie avant chaque exécution."""
+    try:
+        script_path = os.path.join(os.path.dirname(__file__), '..', 'scripts', 'clearoutputs.ps1')
+        script_path = os.path.abspath(script_path)
+
+        print("[INFO] Nettoyage automatique des outputs...")
+
+        # Exécute le script PowerShell
+        result = subprocess.run(
+            ['powershell.exe', '-ExecutionPolicy', 'Bypass', '-File', script_path],
+            capture_output=True,
+            text=True,
+            cwd=os.path.dirname(script_path)
+        )
+
+        if result.returncode == 0:
+            print("[SUCCESS] Nettoyage terminé.")
+            if result.stdout:
+                print(f"[SCRIPT OUTPUT] {result.stdout.strip()}")
+        else:
+            print(f"[WARNING] Problème lors du nettoyage: {result.stderr.strip()}")
+
+    except Exception as e:
+        print(f"[ERROR] Impossible d'exécuter le script de nettoyage: {e}")
+
+
 def main():
+    # Nettoie automatiquement les outputs avant chaque exécution
+    clear_outputs()
+
     cfg = settings()
     print(f"[INFO] DB: {cfg.pg_dsn}")
     print(f"[INFO] OUTPUT_DIR: {cfg.OUTPUT_DIR}")
+    print(f"[DEBUG] PATCH_SIZE_M from config: {cfg.PATCH_SIZE_M}")
+    print(f"[DEBUG] PATCH_SIZE_M from env: {os.getenv('PATCH_SIZE_M', 'NOT_SET')}")
 
     # Nouvelle option: si variable d'env USE_GMW_V3=1 on lit directement gmw_v3 et on tuiles les polygones
     use_gmw_v3 = os.getenv("USE_GMW_V3", "0") in ("1","true","True")

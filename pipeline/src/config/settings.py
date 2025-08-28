@@ -2,6 +2,7 @@ import os
 from pathlib import Path
 from functools import lru_cache
 from dotenv import load_dotenv
+from typing import Optional
 
 load_dotenv()
 
@@ -22,8 +23,8 @@ class Config:
     TIME_INTERVAL = os.getenv("TIME_INTERVAL", "2024-06-01/2025-06-10")
     MAX_CLOUD_COVER = int(os.getenv("MAX_CLOUD_COVER", "20"))
     IMAGE_RESOLUTION = int(os.getenv("IMAGE_RESOLUTION", "10"))
-    PATCH_SIZE_M = int(os.getenv("PATCH_SIZE_M", "2048"))
-    MAX_PATCHES = int(os.getenv("MAX_PATCHES", "10"))
+    PATCH_SIZE_M = int(os.getenv("PATCH_SIZE_M", "8192"))
+    MAX_PATCHES = int(os.getenv("MAX_PATCHES", "3"))
 
     ENHANCEMENT_METHOD = os.getenv("ENHANCEMENT_METHOD", "gamma")
     GAMMA_VALUE = float(os.getenv("GAMMA_VALUE", "0.9"))
@@ -46,9 +47,9 @@ class Config:
 
         # Traitement
         self.TIME_INTERVAL = os.getenv("TIME_INTERVAL", "2024-06-01/2025-06-10")
-        self.MAX_CLOUD_COVER = int(os.getenv("MAX_CLOUD_COVER", "20"))
+        self.MAX_CLOUD_COVER = int(os.getenv("MAX_CLOUD_COVER", "10"))
         self.IMAGE_RESOLUTION = int(os.getenv("IMAGE_RESOLUTION", "10"))
-        self.PATCH_SIZE_M = int(os.getenv("PATCH_SIZE_M", "512"))
+        self.PATCH_SIZE_M = int(os.getenv("PATCH_SIZE_M", "8192"))
         self.MAX_PATCHES = int(os.getenv("MAX_PATCHES", "10"))
 
         # Améliorations
@@ -99,7 +100,7 @@ class MarineMangrovesConfig(Config):
         self.PG_DB = "marine_mangroves"
 
 # Utilitaire pour choisir la config selon le nom de la base
-def get_config(db_name: str | None = None) -> Config:
+def get_config(db_name: Optional[str] = None) -> Config:
     if not db_name:
         return Config()
     if db_name == "gmw_v3":
@@ -115,7 +116,7 @@ def get_config(db_name: str | None = None) -> Config:
     
 
 @lru_cache
-def settings(db_name: str | None = None) -> Config:
+def settings(db_name: Optional[str] = None) -> Config:
     """Retourne une configuration (mise en cache par nom de base).
 
     Exemple d'utilisation:
