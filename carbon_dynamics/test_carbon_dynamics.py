@@ -12,7 +12,7 @@ import sys
 # Ajouter le chemin parent pour les imports
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from src.carbon_dynamics import (
+from carbon_dynamics import (
     TimeSeriesProcessor,
     TidalAnalyzer,
     MangroveTypeClassifier,
