@@ -18,7 +18,6 @@ def create_valid_bbox(geometry, size_m):
         bbox_wgs84 = gpd.GeoDataFrame(geometry=[bbox_3857], crs="EPSG:3857").to_crs(epsg=4326)
         minx, miny, maxx, maxy = bbox_wgs84.total_bounds
 
-        # Removed emoji to avoid Windows console / source encoding issues.
         print(f"BBox generee: [{minx:.4f}, {miny:.4f}, {maxx:.4f}, {maxy:.4f}]")
         return BBox([minx, miny, maxx, maxy], crs=CRS.WGS84)
 

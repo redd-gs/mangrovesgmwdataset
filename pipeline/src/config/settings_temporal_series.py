@@ -6,7 +6,7 @@ from typing import Optional
 
 load_dotenv()
 
-class Config:
+class Config_TS:
     # Attributs de classe (compatibilité tests accédant directement à Config.PG_USER, etc.)
     PG_HOST = os.getenv("PGHOST", "localhost")
     PG_PORT = int(os.getenv("PGPORT", "5432"))
@@ -21,7 +21,7 @@ class Config:
     SH_INSTANCE_ID = os.getenv("SH_INSTANCE_ID", "975be0e1-6eed-4cf0-ab03-cdb6722aab80")
 
     TIME_INTERVAL = os.getenv("TIME_INTERVAL", "2024-06-01/2025-06-10")
-    MAX_CLOUD_COVER = int(os.getenv("MAX_CLOUD_COVER", "10"))
+    MAX_CLOUD_COVER = int(os.getenv("MAX_CLOUD_COVER", "20"))
     IMAGE_RESOLUTION = int(os.getenv("IMAGE_RESOLUTION", "10"))
     PATCH_SIZE_M = int(os.getenv("PATCH_SIZE_M", "8192"))
     MAX_PATCHES = int(os.getenv("MAX_PATCHES", "3"))
@@ -58,9 +58,11 @@ class Config:
         self.CLIP_VALUE = float(os.getenv("CLIP_VALUE", "2.2"))
 
         # Répertoires
-        self.OUTPUT_DIR = Path(os.getenv("OUTPUT_DIR", "data/sentinel_2/output"))
-        self.TEMP_DIR = Path(os.getenv("TEMP_DIR", "data/sentinel_2/temp"))
+        self.OUTPUT_DIR = Path(os.getenv("OUTPUT_DIR", "data/temporal_series/output"))
+        self.OUTPUT_DIR_TIME_SERIES = Path(os.getenv("OUTPUT_DIR_TIME_SERIES", "data/time_series"))
+        self.TEMP_DIR = Path(os.getenv("TEMP_DIR", "data/temporal_series/temp"))
         self.OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+        self.OUTPUT_DIR_TIME_SERIES.mkdir(parents=True, exist_ok=True)
         self.TEMP_DIR.mkdir(parents=True, exist_ok=True)
 
     def _ensure_dirs(self):
@@ -84,25 +86,25 @@ class Config:
         return f"postgresql://{self.PG_USER}:{self.PG_PASSWORD}@{self.PG_HOST}:{self.PG_PORT}/{self.PG_DB}"
 
 # Configs pour d'autres bases de données
-class GmwV3Config(Config):
+class GmwV3Config(Config_TS):
     def __init__(self):
         super().__init__()
         self.PG_DB = "gmw_v3"
 
-class EstuarineMangrovesConfig(Config):
+class EstuarineMangrovesConfig(Config_TS):
     def __init__(self):
         super().__init__()
         self.PG_DB = "estuarine_mangroves"
 
-class MarineMangrovesConfig(Config):
+class MarineMangrovesConfig(Config_TS):
     def __init__(self):
         super().__init__()
         self.PG_DB = "marine_mangroves"
 
 # Utilitaire pour choisir la config selon le nom de la base
-def get_config(db_name: Optional[str] = None) -> Config:
+def get_config(db_name: Optional[str] = None) -> Config_TS:
     if not db_name:
-        return Config()
+        return Config_TS()
     if db_name == "gmw_v3":
         return GmwV3Config()
     if db_name == "estuarine_mangroves":
@@ -110,13 +112,13 @@ def get_config(db_name: Optional[str] = None) -> Config:
     if db_name == "marine_mangroves":
         return MarineMangrovesConfig()
     # Si un nom arbitraire est fourni, on retourne une Config générique avec ce nom
-    cfg = Config()
+    cfg = Config_TS()
     cfg.PG_DB = db_name
     return cfg
     
 
 @lru_cache
-def settings(db_name: Optional[str] = None) -> Config:
+def settings_temporal_series(db_name: Optional[str] = None) -> Config_TS:
     """Retourne une configuration (mise en cache par nom de base).
 
     Exemple d'utilisation:

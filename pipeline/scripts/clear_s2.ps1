@@ -1,6 +1,6 @@
 [CmdletBinding()]
 param(
-    [string]$Dir = "data/output",
+    [string]$Dir = "pipeline/data/sentinel_2/output",
     [switch]$Recreate,      # recrée le dossier après suppression
     [switch]$VerboseList    # affiche les fichiers supprimés
 )
