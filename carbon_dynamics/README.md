@@ -36,7 +36,7 @@ Analyse les cycles de marée :
 Classifie les mangroves selon leur exposition hydrodynamique :
 - Extraction de caractéristiques hydrodynamiques
 - Classification en 3 types : marine, estuarienne, terrestre
-- Utilise Random Forest avec règles expertes
+- Utilise Random Forest 
 - Validation croisée spatiale
 
 ### 5. CarbonSequestrationAnalyzer

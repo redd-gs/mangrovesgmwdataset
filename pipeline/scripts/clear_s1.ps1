@@ -1,8 +1,8 @@
 [CmdletBinding()]
 param(
-    [string]$Dir1 = "$PSScriptRoot/../data/sentinel_2/output",
-    [string]$Dir2 = "$PSScriptRoot/../data/sentinel_2/temp",
-    [string]$Dir3 = "$PSScriptRoot/../data/sentinel_2/temporal_series"
+    [string]$Dir1 = "$PSScriptRoot/../data/sentinel_1/output",
+    [string]$Dir2 = "$PSScriptRoot/../data/sentinel_1/temp",
+    [string]$Dir3 = "$PSScriptRoot/../data/sentinel_1/temporal_series"
 )
 
 if (-not (Test-Path $Dir1)) {

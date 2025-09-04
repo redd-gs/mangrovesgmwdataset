@@ -10,7 +10,7 @@ from sentinelhub import (
 )
 import sentinelhub as sh
 from config.settings import settings
-from core.context import get_sh_config
+from pipeline.src.config.context import get_sh_config
 import rasterio
 from rasterio.transform import from_bounds
 
