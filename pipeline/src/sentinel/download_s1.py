@@ -9,10 +9,11 @@ from sentinelhub import (
     DataCollection, bbox_to_dimensions
 )
 import sentinelhub as sh
-from config.settings import settings
-from pipeline.src.config.context import get_sh_config
+from config.settings_s1 import settings_s1
+from config.context import get_sh_config
 import rasterio
 from rasterio.transform import from_bounds
+
 
 # Individual band evalscripts for downloading separate TIFF files
 BAND_EVALSCRIPTS = {
@@ -99,14 +100,14 @@ function evaluatePixel(s){
 def download_single(bbox: BBox,
                     output_path: Path,
                     enhanced: bool = False) -> bool:
-    cfg = settings()
+    cfg = settings_s1()
     sh_cfg = get_sh_config()
 
     # Récupère l'intervalle de temps centralisé (YYYY-MM-DD, YYYY-MM-DD)
     start_date, end_date = cfg.time_interval_tuple
 
     # Create temp directory for individual bands
-    temp_dir = cfg.TEMP_DIR / output_path.stem
+    temp_dir = cfg.BANDS_DIR / output_path.stem
     temp_dir.mkdir(parents=True, exist_ok=True)
 
     # Download individual bands
@@ -117,7 +118,7 @@ def download_single(bbox: BBox,
             evalscript=evalscript,
             input_data=[
                 SentinelHubRequest.input_data(
-                    data_collection=DataCollection.SENTINEL2_L2A,
+                    data_collection=DataCollection.SENTINEL1_IW,
                     time_interval=(start_date, end_date),
                     mosaicking_order="leastCC"
                 )
@@ -184,7 +185,7 @@ def run_download(bboxes: Iterable[BBox],
                  prefix: str = "patch",
                  enhanced: bool = True,
                  workers: int = 1) -> List[Path]:
-    cfg = settings()
+    cfg = settings_s1()
     results: List[Path] = []
 
     def task(item):

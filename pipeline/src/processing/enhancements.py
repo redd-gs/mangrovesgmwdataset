@@ -67,3 +67,59 @@ def save_enhanced_images(enhanced_images, output_paths):
         image_to_save = Image.fromarray((img * 255).astype(np.uint8))
         image_to_save.save(path)
         print(f"Saved enhanced image to {path}")
+
+def create_rgb_from_bands(red_band_path, green_band_path, blue_band_path, output_path, enhanced=False):
+    """
+    Crée une image RGB à partir de 3 bandes de Sentinel-2.
+    
+    Parameters:
+    - red_band_path: Chemin vers la bande rouge (B04)
+    - green_band_path: Chemin vers la bande verte (B03)  
+    - blue_band_path: Chemin vers la bande bleue (B02)
+    - output_path: Chemin de sortie pour l'image RGB
+    - enhanced: Si True, applique des améliorations d'image
+    
+    Returns:
+    - bool: True si la création a réussi, False sinon
+    """
+    try:
+        import rasterio
+        from pathlib import Path
+        
+        # Lire les trois bandes
+        with rasterio.open(red_band_path) as red_src:
+            red = red_src.read(1).astype(np.float32)
+            
+        with rasterio.open(green_band_path) as green_src:
+            green = green_src.read(1).astype(np.float32)
+            
+        with rasterio.open(blue_band_path) as blue_src:
+            blue = blue_src.read(1).astype(np.float32)
+        
+        # Normaliser les valeurs (Sentinel-2 utilise des valeurs uint16)
+        red = np.clip(red / 3000.0, 0, 1)
+        green = np.clip(green / 3000.0, 0, 1)
+        blue = np.clip(blue / 3000.0, 0, 1)
+        
+        # Combiner en image RGB
+        rgb_array = np.stack([red, green, blue], axis=2)
+        
+        # Appliquer des améliorations si demandé
+        if enhanced:
+            rgb_array = enhance_image(rgb_array, brightness_factor=1.3, contrast_factor=1.2)
+        
+        # Convertir en image PIL et sauvegarder
+        rgb_uint8 = (rgb_array * 255).astype(np.uint8)
+        image = Image.fromarray(rgb_uint8)
+        
+        # Créer le dossier parent si nécessaire
+        Path(output_path).parent.mkdir(parents=True, exist_ok=True)
+        
+        image.save(output_path)
+        print(f"[SUCCESS] Image RGB créée et sauvegardée dans {output_path}")
+        
+        return True
+        
+    except Exception as e:
+        print(f"[ERROR] Erreur lors de la création de l'image RGB: {e}")
+        return False

@@ -11,11 +11,11 @@ class Config:
         # Postgres
         self.PG_HOST = os.getenv("PGHOST", "localhost")
         self.PG_PORT = int(os.getenv("PGPORT", "5432"))
-        self.PG_DB = os.getenv("PGDATABASE", "global_mangrove_dataset_2016")
+        self.PG_DB = os.getenv("PGDATABASE", "gmw_v3")
         self.PG_USER = os.getenv("PGUSER", "postgres")
         self.PG_PASSWORD = os.getenv("PGPASSWORD", "mangrovesondra")
         self.PG_SCHEMA = os.getenv("PGSCHEMA", "public")
-        self.PG_TABLE = os.getenv("PGTABLE", "gmw_2016_v2")
+        self.PG_TABLE = os.getenv("PGTABLE", "gmw_v3_2020_vec")
 
         # Sentinel Hub
         self.SH_CLIENT_ID = os.getenv("SH_CLIENT_ID", "296047b6-fdf8-4cf1-b5b3-25bc57cda004")
@@ -27,21 +27,23 @@ class Config:
         self.MAX_CLOUD_COVER = int(os.getenv("MAX_CLOUD_COVER", "10"))
         self.IMAGE_RESOLUTION = int(os.getenv("IMAGE_RESOLUTION", "10"))
         self.PATCH_SIZE_M = int(os.getenv("PATCH_SIZE_M", "8192"))
-        self.MAX_PATCHES = int(os.getenv("MAX_PATCHES", "100"))
+        self.PATCH_SIZE_PX = int(os.getenv("PATCH_SIZE_PX", "512"))  # Taille en pixels
+        self.MAX_PATCHES = int(os.getenv("MAX_PATCHES", "20"))
 
         # Améliorations
         self.ENHANCEMENT_METHOD = os.getenv("ENHANCEMENT_METHOD", "gamma")
         self.GAMMA_VALUE = float(os.getenv("GAMMA_VALUE", "0.9"))
         self.CLIP_VALUE = float(os.getenv("CLIP_VALUE", "2.2"))
 
-        # Répertoires
-        self.OUTPUT_DIR = Path(os.getenv("OUTPUT_DIR", "data/sentinel_2/output"))
-        self.TEMP_DIR = Path(os.getenv("TEMP_DIR", "data/sentinel_2/temp"))
+        # Répertoires - utiliser des chemins absolus vers le dossier pipeline/data
+        base_dir = Path(__file__).parent.parent.parent  # Remonte de src/config vers pipeline
+        self.OUTPUT_DIR = Path(os.getenv("OUTPUT_DIR", str(base_dir / "data" / "sentinel_2" / "output")))
+        self.BANDS_DIR = Path(os.getenv("BANDS_DIR", str(base_dir / "data" / "sentinel_2" / "bands")))
         self.OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
-        self.TEMP_DIR.mkdir(parents=True, exist_ok=True)
+        self.BANDS_DIR.mkdir(parents=True, exist_ok=True)
 
     def _ensure_dirs(self):
-        for d in (self.OUTPUT_DIR, self.TEMP_DIR):
+        for d in (self.OUTPUT_DIR, self.BANDS_DIR):
             if d.exists() and not d.is_dir():
                 raise RuntimeError(f"[ERREUR] {d} existe mais n'est pas un dossier. Supprime ce fichier.")
             d.mkdir(parents=True, exist_ok=True)
@@ -93,7 +95,7 @@ def get_config(db_name: Optional[str] = None) -> Config:
     
 
 @lru_cache
-def settings(db_name: Optional[str] = None) -> Config:
+def settings_s2(db_name: Optional[str] = None) -> Config:
     """Retourne une configuration (mise en cache par nom de base).
 
     Exemple d'utilisation:

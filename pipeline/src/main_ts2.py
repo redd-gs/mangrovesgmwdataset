@@ -6,9 +6,9 @@ from sqlalchemy import text
 from sentinelhub import BBox, CRS
 import random
 
-from config.settings import settings
+from pipeline.src.config.settings_s2 import settings
 from pipeline.src.config.context import get_engine
-from sentinel.download import run_download
+from pipeline.src.sentinel.download_s2 import run_download
 from processing.bbox import create_valid_bbox  # Utiliser une bbox de taille fixe autour du centroïde
 from database.gmw_v3 import generate_bboxes_from_gmw_v3
 

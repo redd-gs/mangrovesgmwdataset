@@ -6,12 +6,12 @@ from shapely.geometry import Polygon, box
 import geopandas as gpd
 from sqlalchemy import text
 from sentinelhub import BBox, CRS
-from config.settings import settings
+from pipeline.src.config.settings_s2 import settings_s2
 from pipeline.src.config.context import get_engine
 
 
 def get_marine_settings():
-    return settings("marine")
+    return settings_s2("marine")
 
 
 def fetch_random_polygons(limit: int, min_area_m2: float = 0.0) -> List[Polygon]:

@@ -4,11 +4,11 @@ from functools import lru_cache
 from sentinelhub import SHConfig, SentinelHubSession
 from sqlalchemy import create_engine
 from sqlalchemy.engine import Engine
-from config.settings import settings
+from config.settings_s2 import settings_s2
 
 @lru_cache
 def get_sh_config() -> SHConfig:
-    cfg_app = settings()
+    cfg_app = settings_s2()
     shc = SHConfig()
     shc.sh_client_id = cfg_app.SH_CLIENT_ID
     shc.sh_client_secret = cfg_app.SH_CLIENT_SECRET
@@ -22,4 +22,4 @@ def get_sh_session() -> SentinelHubSession:
 
 @lru_cache
 def get_engine() -> Engine:
-    return create_engine(settings().pg_dsn, pool_pre_ping=True, future=True)
+    return create_engine(settings_s2().pg_dsn, pool_pre_ping=True, future=True)
