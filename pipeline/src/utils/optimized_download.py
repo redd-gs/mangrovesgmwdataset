@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """
 Version optimisée du téléchargement Sentinel-2 avec calcul de couverture en batch.
 """
@@ -6,19 +5,25 @@ Version optimisée du téléchargement Sentinel-2 avec calcul de couverture en b
 import sys
 import os
 import numpy as np
+import concurrent.futures as cf
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
+from sentinelhub import BBox, CRS
 from sentinel.download_s2 import download_single
-from optimized_coverage import calculate_mangrove_coverage_batch, extract_bbox_coords, create_spatial_index_if_not_exists
+from pipeline.src.utils.optimized_coverage import calculate_mangrove_coverage_batch, extract_bbox_coords, create_spatial_index_if_not_exists
 from dataset.mangrove_dataset import get_coverage_category
 import time
 from pathlib import Path
 from typing import List, Dict, Any
+from config.settings_s2 import get_config as settings_s2
+from sentinel.auth import get_sentinel_config as get_sh_config
+from sentinelhub import SentinelHubRequest, DataCollection, MimeType, BBox
+from processing.enhancements import create_rgb_from_bands
 
 def download_with_batch_coverage(bboxes: List[Any], 
                                 prefix: str = "gmw", 
                                 enhanced: bool = True, 
-                                workers: int = 1,
+                                workers: int = 4,
                                 gmw_table: str = "public.gmw_v3_2020_vec") -> List[Path]:
     """
     Version optimisée qui calcule toutes les couvertures en batch avant de télécharger.
@@ -27,7 +32,7 @@ def download_with_batch_coverage(bboxes: List[Any],
         bboxes: Liste des BBox à traiter
         prefix: Préfixe pour les noms de fichiers
         enhanced: Si True, applique des améliorations d'image
-        workers: Nombre de workers (ignoré pour l'instant, traitement séquentiel)
+        workers: Nombre de workers pour parallélisation des téléchargements
         gmw_table: Table contenant les données de mangroves
         
     Returns:
@@ -36,13 +41,13 @@ def download_with_batch_coverage(bboxes: List[Any],
     print(f"[INFO] Téléchargement {len(bboxes)} tuiles avec calcul de couverture optimisé...")
     
     # Import pour timing détaillé
-    import time
     
     # Étape 1: Créer l'index spatial si nécessaire
     index_start = time.time()
     create_spatial_index_if_not_exists()
     index_time = time.time() - index_start
-    
+    print(f"[SUCCESS] Index spatial créé en {index_time:.2f}s")
+
     # Étape 2: Calculer toutes les couvertures en batch
     print(f"[INFO] Calcul des couvertures en batch pour {len(bboxes)} BBox...")
     coverage_start = time.time()
@@ -83,16 +88,14 @@ def download_with_batch_coverage(bboxes: List[Any],
             print(f"  [Catégorie inconnue]: {count} images ({count/len(bboxes)*100:.1f}%)")
     
     # Étape 4: Télécharger les images avec les métadonnées pré-calculées
-    print(f"[INFO] Début du téléchargement des images...")
+    print(f"[INFO] Début du téléchargement des images avec {workers} workers...")
     
     downloaded_paths = []
     download_start = time.time()
-    
-    # Variables pour tracking détaillé
-    total_sentinel_time = 0
-    total_rgb_time = 0
-    
-    for i, meta in enumerate(bbox_metadata):
+
+    def download_single_task(meta_with_index):
+        """Fonction pour télécharger une seule image (pour parallélisation)"""
+        i, meta = meta_with_index
         bbox = meta['bbox']
         coverage = meta['coverage']
         category = meta['category']
@@ -116,13 +119,30 @@ def download_with_batch_coverage(bboxes: List[Any],
             single_time = time.time() - single_start
             
             if path:
-                downloaded_paths.append(path)
                 print(f"[SUCCESS] Image téléchargée: {path} (temps: {single_time:.1f}s)")
+                return path
             else:
                 print(f"[WARNING] Échec du téléchargement pour {output_name}")
+                return None
                 
         except Exception as e:
             print(f"[ERROR] Erreur lors du téléchargement de {output_name}: {e}")
+            return None
+    
+    # Préparer les tâches avec indices
+    tasks = list(enumerate(bbox_metadata))
+    
+    # Téléchargement en parallèle ou séquentiel selon le nombre de workers
+    if workers > 1:
+        with cf.ThreadPoolExecutor(max_workers=workers) as executor:
+            results = list(executor.map(download_single_task, tasks))
+        downloaded_paths = [path for path in results if path is not None]
+    else:
+        # Mode séquentiel pour workers=1
+        for task in tasks:
+            path = download_single_task(task)
+            if path:
+                downloaded_paths.append(path)
     
     total_download_time = time.time() - download_start
     print(f"[SUCCESS] Téléchargement terminé en {total_download_time:.2f}s")
@@ -145,12 +165,7 @@ def download_single_with_precomputed_coverage(bbox: Any,
     Version modifiée de download_single qui utilise une couverture pré-calculée.
     """
     try:
-        # Import des modules nécessaires
-        from config.settings_s2 import get_config as settings_s2
-        from sentinel.auth import get_sentinel_config as get_sh_config
-        from sentinelhub import SentinelHubRequest, DataCollection, MimeType, BBox
-        from processing.enhancements import create_rgb_from_bands
-        
+        # Import des modules nécessaires        
         cfg = settings_s2()
         sh_cfg = get_sh_config()
         
@@ -257,17 +272,3 @@ function evaluatePixel(sample) {{
     except Exception as e:
         print(f"[ERROR] Erreur lors du téléchargement: {e}")
         return None
-
-# Test de la nouvelle fonction
-if __name__ == "__main__":
-    from sentinelhub import BBox, CRS
-    
-    # Créer quelques BBox de test
-    test_bboxes = [
-        BBox([-5.5, 5.0, -5.0, 5.5], crs=CRS.WGS84),
-        BBox([-5.4, 5.1, -4.9, 5.6], crs=CRS.WGS84),
-        BBox([-5.3, 5.2, -4.8, 5.7], crs=CRS.WGS84),
-    ]
-    
-    print("Test de la fonction de téléchargement optimisée...")
-    paths = download_with_batch_coverage(test_bboxes, prefix="test", enhanced=True)

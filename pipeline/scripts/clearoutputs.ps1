@@ -55,6 +55,3 @@ try {
 catch {
     Write-Error "Une erreur est survenue : $($_.Exception.Message)"
 }
-
-# Au lieu de workers=1, utiliser workers=4-8
-workers = 4  # Pourrait réduire à ~2s par image

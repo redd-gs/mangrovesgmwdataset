@@ -165,7 +165,7 @@ def calculate_mangrove_coverage(bbox, gmw_table: str = "public.gmw_v3_2020_vec")
         import sys
         import os
         sys.path.append(os.path.dirname(os.path.abspath(__file__)))
-        from optimized_coverage import calculate_mangrove_coverage_batch
+        from pipeline.src.utils.optimized_coverage import calculate_mangrove_coverage_batch
         
         # Utiliser la méthode batch même pour un seul élément (plus efficace)
         coverages = calculate_mangrove_coverage_batch([bbox], gmw_table)

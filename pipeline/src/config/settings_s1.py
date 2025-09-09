@@ -27,7 +27,8 @@ class Config:
         self.MAX_CLOUD_COVER = int(os.getenv("MAX_CLOUD_COVER", "10"))
         self.IMAGE_RESOLUTION = int(os.getenv("IMAGE_RESOLUTION", "10"))
         self.PATCH_SIZE_M = int(os.getenv("PATCH_SIZE_M", "8192"))
-        self.MAX_PATCHES = int(os.getenv("MAX_PATCHES", "40"))
+        self.PATCH_SIZE_PX = int(os.getenv("PATCH_SIZE_PX", "512"))  # Taille en pixels
+        self.MAX_PATCHES = int(os.getenv("MAX_PATCHES", "20"))
 
         # Améliorations
         self.ENHANCEMENT_METHOD = os.getenv("ENHANCEMENT_METHOD", "gamma")

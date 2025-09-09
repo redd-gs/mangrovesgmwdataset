@@ -14,7 +14,7 @@ from sentinel.download_s2 import run_download
 from processing.bbox import create_valid_bbox  # Utiliser une bbox de taille fixe autour du centroïde
 from database.gmw_v3 import generate_bboxes_from_gmw_v3
 from dataset.mangrove_dataset import generate_dataset
-from optimized_download import download_with_batch_coverage
+from utils.optimized_download import download_with_batch_coverage
 
 
 def fetch_geometries(limit: int) -> List:
@@ -68,10 +68,6 @@ def clear_outputs():
     try:
         base_dir = Path(__file__).resolve().parents[2]
         script_path = base_dir / 'pipeline' / 'scripts' / 'clearoutputs.ps1'
-        
-        if not script_path.exists():
-            print(f"[WARNING] Le script de nettoyage n'a pas été trouvé à l'emplacement: {script_path}")
-            return
 
         print("[INFO] Nettoyage automatique des outputs...")
 
@@ -96,8 +92,8 @@ def clear_outputs():
 
 def main():
     """Main entry point."""
-    # Configuration pour 40 images
-    TARGET_IMAGES = 40
+    # Configuration pour test de parallélisation
+    TARGET_IMAGES = 10
     
     # Timing détaillé
     start_total = time.time()
@@ -144,7 +140,7 @@ def main():
     # Utiliser la version optimisée avec calcul de couverture en batch
     download_start = time.time()
     try:
-        paths = download_with_batch_coverage(bboxes, prefix="gmw", enhanced=True, workers=1)
+        paths = download_with_batch_coverage(bboxes, prefix="gmw", enhanced=True, workers=4)
     except ImportError:
         print("[WARNING] Module optimisé non disponible, utilisation de la méthode standard...")
         paths = run_download(bboxes, prefix="gmw", enhanced=True, workers=1)
