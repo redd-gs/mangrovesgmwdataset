@@ -7,11 +7,31 @@ try {
 
     # Définir les dossiers à nettoyer
     $foldersToClean = @(
-        "sentinel_1\outputs",
-        "sentinel_1\bands",
+        "sentinel_1\output\1_20_percent",
+        "sentinel_1\output\21_40_percent"
+        "sentinel_1\output\41_60_percent",
+        "sentinel_1\output\61_80_percent",
+        "sentinel_1\output\more_than_80_percent",
+        "sentinel_1\output\no_mangroves",
+        "sentinel_1\bands\1_20_percent",
+        "sentinel_1\bands\21_40_percent",
+        "sentinel_1\bands\41_60_percent",
+        "sentinel_1\bands\61_80_percent",
+        "sentinel_1\bands\more_than_80_percent",
+        "sentinel_1\bands\no_mangroves"
         "sentinel_1\temporal series",
-        "sentinel_2\outputs",
-        "sentinel_2\bands",
+        "sentinel_2\output\1_20_percent",
+        "sentinel_2\output\21_40_percent"
+        "sentinel_2\output\41_60_percent",
+        "sentinel_2\output\61_80_percent",
+        "sentinel_2\output\more_than_80_percent",
+        "sentinel_2\output\no_mangroves",
+        "sentinel_2\bands\1_20_percent",
+        "sentinel_2\bands\21_40_percent",
+        "sentinel_2\bands\41_60_percent",
+        "sentinel_2\bands\61_80_percent",
+        "sentinel_2\bands\more_than_80_percent",
+        "sentinel_2\bands\no_mangroves",
         "sentinel_2\temporal series"
     )
     Write-Host "Début du nettoyage du contenu des dossiers..."
@@ -35,3 +55,6 @@ try {
 catch {
     Write-Error "Une erreur est survenue : $($_.Exception.Message)"
 }
+
+# Au lieu de workers=1, utiliser workers=4-8
+workers = 4  # Pourrait réduire à ~2s par image

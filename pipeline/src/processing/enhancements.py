@@ -96,10 +96,18 @@ def create_rgb_from_bands(red_band_path, green_band_path, blue_band_path, output
         with rasterio.open(blue_band_path) as blue_src:
             blue = blue_src.read(1).astype(np.float32)
         
-        # Normaliser les valeurs (Sentinel-2 utilise des valeurs uint16)
-        red = np.clip(red / 3000.0, 0, 1)
-        green = np.clip(green / 3000.0, 0, 1)
-        blue = np.clip(blue / 3000.0, 0, 1)
+        # Les valeurs sont déjà en réflectance (0-1) grâce à l'evalscript
+        # Juste cliper pour s'assurer qu'elles restent dans la plage [0,1]
+        red = np.clip(red, 0, 1)
+        green = np.clip(green, 0, 1)
+        blue = np.clip(blue, 0, 1)
+        
+        # Améliorer le contraste pour une meilleure visualisation
+        # Stretch linéaire pour utiliser toute la plage 0-1
+        for band_data in [red, green, blue]:
+            if np.max(band_data) > np.min(band_data):
+                band_min, band_max = np.min(band_data), np.max(band_data)
+                band_data[:] = (band_data - band_min) / (band_max - band_min)
         
         # Combiner en image RGB
         rgb_array = np.stack([red, green, blue], axis=2)

@@ -16,7 +16,7 @@ import numpy as np
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from carbon_dynamics.hydrodynamic_model import HydrodynamicModel
-from config.settings import settings
+from pipeline.src.config.settings_s2 import settings_s2
 from pipeline.src.config.context import get_engine
 from sqlalchemy import text
 
@@ -39,7 +39,7 @@ def get_mangrove_locations_from_db(limit=5):
         Liste de tuples (lat, lon, description)
     """
     try:
-        cfg = settings()
+        cfg = settings_s2()
         full_table = f'"{cfg.PG_SCHEMA}"."{cfg.PG_TABLE}"'
         
         sql = text(f"""

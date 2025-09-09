@@ -1,0 +1,44 @@
+name: mangrove_env
+channels:
+  - defaults
+  - conda-forge
+  - sentinelhub
+dependencies:
+  - python=3.9
+  - sentinelhub
+  - rasterio
+  - geopandas
+  - shapely
+  - fiona
+  - gdal
+  - pyproj
+  - postgis
+  - psycopg2
+  - sqlalchemy
+  - scikit-learn
+  - xgboost
+  - lightgbm
+  - numpy
+  - pandas
+  - scipy
+  - netcdf4
+  - h5py
+  - matplotlib
+  - seaborn
+  - plotly
+  - folium
+  - jupyterlab
+  - ipykernel
+  - notebook
+  - opencv
+  - pillow
+  - imageio
+  - tqdm
+  - requests
+  - pyyaml
+  - click
+  - pip
+  - pip:
+    - earthpy
+    - satpy
+    - planet

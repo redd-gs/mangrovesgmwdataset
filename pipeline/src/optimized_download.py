@@ -5,6 +5,7 @@ Version optimisée du téléchargement Sentinel-2 avec calcul de couverture en b
 
 import sys
 import os
+import numpy as np
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
 from sentinel.download_s2 import download_single
@@ -34,17 +35,22 @@ def download_with_batch_coverage(bboxes: List[Any],
     """
     print(f"[INFO] Téléchargement {len(bboxes)} tuiles avec calcul de couverture optimisé...")
     
+    # Import pour timing détaillé
+    import time
+    
     # Étape 1: Créer l'index spatial si nécessaire
+    index_start = time.time()
     create_spatial_index_if_not_exists()
+    index_time = time.time() - index_start
     
     # Étape 2: Calculer toutes les couvertures en batch
     print(f"[INFO] Calcul des couvertures en batch pour {len(bboxes)} BBox...")
-    start_time = time.time()
+    coverage_start = time.time()
     
     try:
         coverages = calculate_mangrove_coverage_batch(bboxes, gmw_table)
-        elapsed = time.time() - start_time
-        print(f"[SUCCESS] Couvertures calculées en {elapsed:.2f}s ({elapsed/len(bboxes)*1000:.1f}ms par BBox)")
+        coverage_time = time.time() - coverage_start
+        print(f"[SUCCESS] Couvertures calculées en {coverage_time:.2f}s ({coverage_time/len(bboxes)*1000:.1f}ms par BBox)")
     except Exception as e:
         print(f"[WARNING] Erreur dans le calcul batch: {e}")
         print("[WARNING] Basculement vers le calcul individuel...")
@@ -82,6 +88,10 @@ def download_with_batch_coverage(bboxes: List[Any],
     downloaded_paths = []
     download_start = time.time()
     
+    # Variables pour tracking détaillé
+    total_sentinel_time = 0
+    total_rgb_time = 0
+    
     for i, meta in enumerate(bbox_metadata):
         bbox = meta['bbox']
         coverage = meta['coverage']
@@ -91,6 +101,9 @@ def download_with_batch_coverage(bboxes: List[Any],
         print(f"[INFO] Traitement {i+1}/{len(bboxes)}: {output_name} (couverture: {coverage:.2f}%, catégorie: {category})")
         
         try:
+            # Mesurer le temps pour chaque image
+            single_start = time.time()
+            
             # Utiliser la fonction de téléchargement optimisée
             path = download_single_with_precomputed_coverage(
                 bbox=bbox,
@@ -100,18 +113,26 @@ def download_with_batch_coverage(bboxes: List[Any],
                 enhanced=enhanced
             )
             
+            single_time = time.time() - single_start
+            
             if path:
                 downloaded_paths.append(path)
-                print(f"[SUCCESS] Image téléchargée: {path}")
+                print(f"[SUCCESS] Image téléchargée: {path} (temps: {single_time:.1f}s)")
             else:
                 print(f"[WARNING] Échec du téléchargement pour {output_name}")
                 
         except Exception as e:
             print(f"[ERROR] Erreur lors du téléchargement de {output_name}: {e}")
     
-    total_elapsed = time.time() - download_start
-    print(f"[SUCCESS] Téléchargement terminé en {total_elapsed:.2f}s")
+    total_download_time = time.time() - download_start
+    print(f"[SUCCESS] Téléchargement terminé en {total_download_time:.2f}s")
     print(f"[SUCCESS] {len(downloaded_paths)}/{len(bboxes)} images téléchargées avec succès")
+    
+    # Statistiques détaillées
+    if len(downloaded_paths) > 0:
+        avg_time_per_image = total_download_time / len(downloaded_paths)
+        print(f"[TIMING] Temps moyen par image: {avg_time_per_image:.2f}s")
+        print(f"[TIMING] Vitesse: {len(downloaded_paths)/(total_download_time/60):.1f} images/minute")
     
     return downloaded_paths
 
@@ -153,18 +174,16 @@ def download_single_with_precomputed_coverage(bbox: Any,
         for band in bands_to_download:
             print(f"[INFO] Downloading band {band}...")
             
-            evalscript = f"""
-            //VERSION=3
-            function setup() {{
-                return {{
-                    input: ["{band}"],
-                    output: {{ bands: 1, sampleType: "UINT16" }}
-                }};
-            }}
-            function evaluatePixel(sample) {{
-                return [sample.{band}];
-            }}
-            """
+            evalscript = f"""//VERSION=3
+function setup() {{
+    return {{
+        input: [{{bands:["{band}"], units:"REFLECTANCE"}}],
+        output: [{{id:"default", bands:1, sampleType:"FLOAT32"}}]
+    }};
+}}
+function evaluatePixel(sample) {{
+    return [sample.{band}];
+}}"""
             
             request = SentinelHubRequest(
                 evalscript=evalscript,
@@ -185,10 +204,29 @@ def download_single_with_precomputed_coverage(bbox: Any,
             
             data = request.get_data()
             
-            if data and len(data) > 0:
+            if data and len(data) > 0 and isinstance(data[0], np.ndarray):
+                # Sauvegarder avec rasterio au lieu d'écrire les bytes bruts
                 band_path = categorized_bands_dir / f"{band}.tif"
-                with open(band_path, 'wb') as f:
-                    f.write(data[0])
+                band_data = data[0]
+                
+                # Utiliser rasterio pour sauvegarder correctement
+                import rasterio
+                from rasterio.transform import from_bounds
+                
+                transform = from_bounds(*bbox, band_data.shape[1], band_data.shape[0])
+                
+                with rasterio.open(
+                    band_path,
+                    'w',
+                    driver='GTiff',
+                    height=band_data.shape[0],
+                    width=band_data.shape[1],
+                    count=1,
+                    dtype=band_data.dtype,
+                    transform=transform
+                ) as dst:
+                    dst.write(band_data, 1)
+                
                 band_paths[band] = band_path
                 print(f"[INFO] Saved {band_path}")
                 print(f"[SUCCESS] Downloaded band {band}")

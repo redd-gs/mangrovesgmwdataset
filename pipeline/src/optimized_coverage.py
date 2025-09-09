@@ -40,7 +40,6 @@ def extract_bbox_coords(bbox):
 def create_spatial_index_if_not_exists():
     """
     Crée un index spatial sur la table GMW si il n'existe pas.
-    Ceci peut considérablement accélérer les requêtes spatiales.
     """
     try:
         engine = get_engine()

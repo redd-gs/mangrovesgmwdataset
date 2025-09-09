@@ -22,7 +22,7 @@ def create_rgb_image(base_path: Path, product_id: str, xmin: int, xmax: int, ymi
     Creates and displays an RGB image from Sentinel-2 bands.
 
     Args:
-        base_path (Path): The base directory where band files are stored (e.g., 'data/temp').
+        base_path (Path): The base directory where band files are stored (e.g., 'data/bands').
         product_id (str): The Sentinel-2 product ID (the directory name for the bands).
         xmin (int): Minimum x-coordinate for cropping.
         xmax (int): Maximum x-coordinate for cropping.

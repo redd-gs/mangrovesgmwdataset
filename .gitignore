@@ -1,0 +1,52 @@
+# Ignorer les fichiers et répertoires temporaires de Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.pdb
+
+# Ignorer les environnements virtuels
+src/config/.venv
+.venv/
+venv/
+env/
+
+# Ignorer les données générées (si elles sont volumineuses ou ne doivent pas être versionnées)
+./data/*
+
+# Ignorer les modèles (les fichiers volumineux peuvent être ignorés si tu les sauvegardes ailleurs)
+models/*
+
+# Ignorer tous les dossiers de données dans les répertoires principaux
+carbon_dynamics/data/
+carbon_dynamics/*.csv
+carbon_dynamics/*.nc
+carbon_dynamics/*.h5
+carbon_dynamics/*.pkl
+carbon_dynamics/*.npy
+
+pipeline/data/
+pipeline/scripts/output/
+pipeline/src/data/
+
+soc_pipeline/data/
+soc_pipeline/*.csv
+soc_pipeline/*.pkl
+soc_pipeline/*.h5
+soc_pipeline/output/
+
+# Ignorer les fichiers temporaires et de cache
+*.tmp
+*.log
+*.bak
+.DS_Store
+Thumbs.db
+
+# Ignorer les fichiers de configuration locaux
+.env
+.env.local
+config.local.*
+
+# Ignorer les checkpoints Jupyter
+.ipynb_checkpoints/
+

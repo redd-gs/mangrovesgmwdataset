@@ -2,6 +2,7 @@ from pathlib import Path
 from typing import List
 import os
 import subprocess
+import time
 from shapely import wkb
 from sqlalchemy import text
 from sentinelhub import BBox, CRS
@@ -13,6 +14,7 @@ from sentinel.download_s2 import run_download
 from processing.bbox import create_valid_bbox  # Utiliser une bbox de taille fixe autour du centroïde
 from database.gmw_v3 import generate_bboxes_from_gmw_v3
 from dataset.mangrove_dataset import generate_dataset
+from optimized_download import download_with_batch_coverage
 
 
 def fetch_geometries(limit: int) -> List:
@@ -93,45 +95,33 @@ def clear_outputs():
 
 
 def main():
-    # Nettoie automatiquement les outputs avant chaque exécution
+    """Main entry point."""
+    # Configuration pour 40 images
+    TARGET_IMAGES = 40
+    
+    # Timing détaillé
+    start_total = time.time()
+    
+    print(f"[INFO] Démarrage du téléchargement de {TARGET_IMAGES} images...")
+    print(f"[INFO] Heure de début: {time.strftime('%H:%M:%S')}")
+    
+    cleanup_start = time.time()
     clear_outputs()
+    cleanup_time = time.time() - cleanup_start
+    print(f"[TIMING] Nettoyage terminé en {cleanup_time:.2f}s")
 
     cfg = settings_s2()
-    print(f"[INFO] DB: {cfg.pg_dsn}")
+    print(f"[INFO] DB: postgresql://{cfg.PG_USER}:{cfg.PG_PASSWORD}@{cfg.PG_HOST}:{cfg.PG_PORT}/{cfg.PG_DB}")
     print(f"[INFO] OUTPUT_DIR: {cfg.OUTPUT_DIR}")
-    print(f"[DEBUG] PATCH_SIZE_M from config: {cfg.PATCH_SIZE_M}")
-    print(f"[DEBUG] PATCH_SIZE_M from env: {os.getenv('PATCH_SIZE_M', 'NOT_SET')}")
-
-    # Nouvelle option: si variable d'env USE_GMW_V3=1 on lit directement gmw_v3 et on tuiles les polygones
-    use_gmw_v3 = os.getenv("USE_GMW_V3", "0") in ("1","true","True")
-    generate_cls_dataset = os.getenv("GENERATE_DATASET", "0") in ("1","true","True")
-
-    if generate_cls_dataset:
-        print("[INFO] Lancement de la génération du jeu de données de classification...")
-        
-        # Paramètres pour le dataset, modifiables via variables d'environnement si besoin
-        images_per_category = int(os.getenv("IMAGES_PER_CATEGORY", "50")) # 50 images par catégorie par défaut
-        patch_size_px = 256 # Taille d'image fixe
-        patch_size_m = int(os.getenv("PATCH_SIZE_M", "2560")) # 256px * 10m/px = 2560m
-        
-        gmw_table = f"{cfg.PG_SCHEMA}.{cfg.PG_TABLE}"
-
-        generate_dataset(
-            output_dir=cfg.OUTPUT_DIR,
-            images_per_category=images_per_category,
-            patch_size_px=patch_size_px,
-            patch_size_m=patch_size_m,
-            gmw_table=gmw_table
-        )
-        
-        print("[SUCCESS] Génération du jeu de données terminée.")
-        return # On arrête l'exécution ici
-
+    
+    use_gmw_v3 = True  # Mode recommandé
+    
+    bbox_start = time.time()
     if use_gmw_v3:
         print("[INFO] Mode gmw_v3 activé: génération de tuiles à partir des polygones")
-        bboxes = generate_bboxes_from_gmw_v3(limit_polygons=cfg.MAX_PATCHES*2, max_patches=cfg.MAX_PATCHES, patch_size_m=cfg.PATCH_SIZE_M)
+        bboxes = generate_bboxes_from_gmw_v3(limit_polygons=TARGET_IMAGES*2, max_patches=TARGET_IMAGES, patch_size_m=cfg.PATCH_SIZE_M)
     else:
-        geoms = fetch_geometries(limit=cfg.MAX_PATCHES)
+        geoms = fetch_geometries(limit=TARGET_IMAGES)
         if not geoms:
             print("[AVERTISSEMENT] Aucune géométrie trouvée.")
             return
@@ -142,6 +132,9 @@ def main():
                 bboxes.append(bb)
             else:
                 print("[AVERTISSEMENT] BBox ignorée (géométrie vide).")
+    
+    bbox_time = time.time() - bbox_start
+    print(f"[TIMING] Génération des BBox terminée en {bbox_time:.2f}s")
 
     if not bboxes:
         print("[ERREUR] Aucune bbox valide générée → arrêt.")
@@ -149,16 +142,25 @@ def main():
     print(f"[INFO] Téléchargement {len(bboxes)} tuiles (taille cible {cfg.PATCH_SIZE_M} m)...")
     
     # Utiliser la version optimisée avec calcul de couverture en batch
+    download_start = time.time()
     try:
-        from optimized_download import download_with_batch_coverage
         paths = download_with_batch_coverage(bboxes, prefix="gmw", enhanced=True, workers=1)
     except ImportError:
         print("[WARNING] Module optimisé non disponible, utilisation de la méthode standard...")
         paths = run_download(bboxes, prefix="gmw", enhanced=True, workers=1)
     
-    print(f"[INFO] Succès: {len(paths)} fichiers.")
-    for p in paths:
-        print(f" - {p}")
+    download_time = time.time() - download_start
+    total_time = time.time() - start_total
+    
+    # Statistiques détaillées
+    print("\n=== STATISTIQUES DE PERFORMANCE ===")
+    print(f"[TIMING] Nettoyage: {cleanup_time:.2f}s")
+    print(f"[TIMING] Génération BBox: {bbox_time:.2f}s") 
+    print(f"[TIMING] Téléchargement: {download_time:.2f}s")
+    print(f"[TIMING] Temps total: {total_time:.2f}s")
+    print(f"[TIMING] Temps par image: {download_time/len(paths):.2f}s")
+    print(f"[TIMING] Images par minute: {len(paths)/(download_time/60):.1f}")
+    print(f"[TIMING] Estimation pour 100,000 images: {(download_time/len(paths)*100000/3600):.1f}h")
 
 
 if __name__ == "__main__":

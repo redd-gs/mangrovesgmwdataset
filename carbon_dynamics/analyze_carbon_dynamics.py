@@ -15,7 +15,7 @@ from pathlib import Path
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from carbon_dynamics.hydrodynamic_model import HydrodynamicModel
-from config.settings_temporal_series import settings_temporal_series
+from pipeline.src.config.settings_s2 import settings_s2
 
 # Configuration du logging
 logging.basicConfig(
@@ -32,7 +32,7 @@ def get_sample_data():
     Returns:
         Tuple (image_paths, timestamps)
     """
-    cfg = settings_temporal_series()
+    cfg = settings_s2()
     data_dir = Path(cfg.OUTPUT_DIR_TIME_SERIES)
     
     # Chercher les images générées
@@ -61,7 +61,7 @@ def main():
     
     try:
         # Configuration
-        cfg = settings_temporal_series()
+        cfg = settings_s2()
         
         # Coordonnées d'exemple (Singapour - zone de mangroves)
         location_lat = 1.3521  # Latitude de Singapour

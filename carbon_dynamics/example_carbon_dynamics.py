@@ -335,8 +335,6 @@ def create_visualizations(results):
     print("\n=== CRÉATION DES VISUALISATIONS ===")
     
     try:
-        import matplotlib.pyplot as plt
-        
         fig, axes = plt.subplots(2, 3, figsize=(15, 10))
         fig.suptitle('Analyse des Dynamiques de Carbone des Mangroves', fontsize=16)
         
