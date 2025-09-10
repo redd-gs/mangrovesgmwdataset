@@ -6,7 +6,7 @@ from sqlalchemy import text
 from sentinelhub import BBox, CRS
 import random
 
-from config.settings_s2 import settings
+from config.settings_s2 import settings_s2
 from config.context import get_engine
 from sentinel.download_s2 import run_download
 from processing.bbox import create_valid_bbox  # Utiliser une bbox de taille fixe autour du centroïde
@@ -20,7 +20,7 @@ def fetch_geometries(limit: int) -> List:
     Si la table est très grande, on pourrait optimiser (TABLESAMPLE) mais
     pour 10 items cela reste acceptable.
     """
-    cfg = settings()
+    cfg = settings_s2()
     full_table = f'"{cfg.PG_SCHEMA}"."{cfg.PG_TABLE}"'
     # On extrait un point robuste intérieur (PointOnSurface) puis son centroid (équivalent ici) pour garantir qu'il tombe dans le polygone.
     sql = text(
@@ -90,7 +90,7 @@ def main():
     # Nettoie automatiquement les outputs avant chaque exécution
     clear_outputs()
 
-    cfg = settings()
+    cfg = settings_s2()
     print(f"[INFO] DB: {cfg.pg_dsn}")
     print(f"[INFO] OUTPUT_DIR: {cfg.OUTPUT_DIR}")
     print(f"[DEBUG] PATCH_SIZE_M from config: {cfg.PATCH_SIZE_M}")
