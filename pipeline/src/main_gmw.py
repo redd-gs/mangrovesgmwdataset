@@ -12,8 +12,7 @@ from config.settings_s2 import settings_s2
 from config.context import get_engine
 from sentinel.download_s2 import run_download
 from processing.bbox import create_valid_bbox  # Utiliser une bbox de taille fixe autour du centroïde
-from database.gmw_v3 import generate_bboxes_from_gmw_v3
-from utils.optimized_download import download_with_batch_coverage, download_with_predefined_categories
+from utils.optimized_download import download_with_predefined_categories
 
 
 def fetch_geometries_by_category(limit_per_category: int) -> List:
@@ -337,6 +336,7 @@ def main():
     if paths:
         print(f"[TIMING] Temps par image: {download_time/len(paths):.2f}s")
         print(f"[TIMING] Images par minute: {len(paths)/(download_time/60):.1f}")
+        print(f"[TIMING] Temps pour 100000 images: {len(paths)/(download_time*100000/3600):.1f}")
 
 
 if __name__ == "__main__":
