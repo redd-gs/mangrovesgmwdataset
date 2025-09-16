@@ -23,7 +23,7 @@ class Config:
         self.SH_INSTANCE_ID = os.getenv("SH_INSTANCE_ID", "60e05787-e8ba-473d-a743-402d54d72762")  # optionnel
 
         # Traitement
-        self.TIME_INTERVAL = os.getenv("TIME_INTERVAL", "2024-06-01/2025-06-10")
+        self.TIME_INTERVAL = os.getenv("TIME_INTERVAL", "2022-06-01/2025-06-10")
         self.MAX_CLOUD_COVER = int(os.getenv("MAX_CLOUD_COVER", "10"))
         self.IMAGE_RESOLUTION = int(os.getenv("IMAGE_RESOLUTION", "10"))
         self.PATCH_SIZE_M = int(os.getenv("PATCH_SIZE_M", "8192"))

@@ -15,6 +15,73 @@ import rasterio
 from rasterio.transform import from_bounds
 
 
+def scale(image, scale_factor=10000.0):
+    image = image.astype(np.float32)
+    image = image / scale_factor
+    # Clamp les valeurs pour éviter les valeurs aberrantes (parfois dues aux nuages ou erreurs de traitement)
+    image = np.clip(image, 0.0, 1.0)
+    return image
+
+def crop(image, xmin, xmax, ymin, ymax):
+    # Découpe l'image pour ne garder qu'une zone d'intérêt (sous-image)
+    # xmin/xmax/ymin/ymax définissent la fenêtre spatiale à extraire
+    return image[ymin:ymax, xmin:xmax]
+
+def process(band, xmin, xmax, ymin, ymax):
+    # Combine les deux étapes précédentes :
+    # 1. Transpose la bande pour avoir les dimensions (hauteur, largeur, canaux)
+    # 2. Découpe la zone d'intérêt
+    # 3. Applique la conversion en réflectance
+    return scale(crop(band.transpose((1, 2, 0)), xmin, xmax, ymin, ymax))
+
+# Normaliser les bandes pour l'affichage (les données sont en FLOAT32)
+def normalize(band):
+    band_min, band_max = band.min(), band.max()
+    if band_max > band_min:
+            return ((band - band_min) / (band_max - band_min) * 255).astype(np.uint8)
+    return np.zeros_like(band, dtype=np.uint8)
+
+
+def create_rgb_from_bands(bands_dir: Path, output_path: Path, size: Tuple[int, int] = None):
+    """Crée une image RGB à partir des bandes B04, B03, B02 téléchargées."""
+    try:
+        # Chemins vers les bandes téléchargées
+        b4_path = bands_dir / 'B04.tif'
+        b3_path = bands_dir / 'B03.tif'
+        b2_path = bands_dir / 'B02.tif'
+
+        # Vérifier que tous les fichiers existent
+        for band_path in [b4_path, b3_path, b2_path]:
+            if not band_path.exists():
+                raise FileNotFoundError(f"Le fichier de bande n'a pas été trouvé : {band_path}")
+
+        # Lire les données de chaque bande
+        with rasterio.open(b4_path) as src:
+            r = src.read(1)
+        with rasterio.open(b3_path) as src:
+            g = src.read(1)
+        with rasterio.open(b2_path) as src:
+            b = src.read(1)
+
+
+        r_norm = normalize(r)
+        g_norm = normalize(g)
+        b_norm = normalize(b)
+
+        # Empiler les bandes pour former une image RGB
+        rgb_image = np.stack([r_norm, g_norm, b_norm], axis=-1)
+
+        # Sauvegarder l'image
+        img = Image.fromarray(rgb_image)
+        img.save(output_path, 'PNG')
+        print(f"[SUCCESS] Image RGB créée et sauvegardée dans {output_path}")
+
+    except Exception as e:
+        print(f"[ERROR] Échec de la création de l'image RGB : {e}")
+        raise
+
+
+
 def validate_image_quality(image_data: np.ndarray, cfg) -> Tuple[bool, str]:
     """
     Valide la qualité d'une image téléchargée pour éviter les images noires/inutilisables.
@@ -201,8 +268,6 @@ def cleanup_invalid_image(output_path: Path, cfg, category: str = None):
     except Exception as e:
         print(f"[WARNING] Erreur lors du nettoyage: {e}")
 
-
-# Individual band evalscripts for downloading separate TIFF files
 
 # Individual band evalscripts for downloading separate TIFF files
 BAND_EVALSCRIPTS = {
@@ -436,71 +501,4 @@ def run_download(bboxes: Iterable[BBox],
 if __name__ == "__main__":
     # Test manuel optionnel (désactivé par défaut pour éviter erreurs lors d'import)
     DEBUG_RUN = False
-
-def scale(image, a=0.0000275, b=0.2):
-    # Convertit les valeurs brutes du capteur en réflectance de surface (valeurs physiques)
-    # Les Digital Numbers (DN) représentent les valeurs numériques brutes enregistrées par le capteur Landsat pour chaque pixel.
-    # Ces valeurs sont codées sur 16 bits (uint16), allant généralement de 0 à 65535, et doivent être converties en valeurs physiques (réflectance) pour l'analyse.
-    # Chaque valeur numérique brute (Digital Number, DN) enregistrée par le capteur pour chaque pixel représente l'intensité du signal réfléchi par la surface terrestre dans une bande spectrale donnée, telle que mesurée par le satellite.
-    # 'a' et 'b' sont les coefficients de calibration fournis dans la documentation Landsat pour convertir les DN en réflectance de surface (valeurs physiques comprises entre 0 et 1).
-    # Ces valeurs spécifiques de 'a' et 'b' proviennent des métadonnées du produit Landsat (voir le fichier MTL.txt associé à chaque image) et peuvent varier selon la scène ou le capteur.
-    image = image.astype(np.float32)
-    image = (image * a) + b
-    return image
-
-def crop(image, xmin, xmax, ymin, ymax):
-    # Découpe l'image pour ne garder qu'une zone d'intérêt (sous-image)
-    # xmin/xmax/ymin/ymax définissent la fenêtre spatiale à extraire
-    return image[ymin:ymax, xmin:xmax]
-
-def process(band, xmin, xmax, ymin, ymax):
-    # Combine les deux étapes précédentes :
-    # 1. Transpose la bande pour avoir les dimensions (hauteur, largeur, canaux)
-    # 2. Découpe la zone d'intérêt
-    # 3. Applique la conversion en réflectance
-    return scale(crop(band.transpose((1, 2, 0)), xmin, xmax, ymin, ymax))
-
-def create_rgb_from_bands(bands_dir: Path, output_path: Path, size: Tuple[int, int] = None):
-    """Crée une image RGB à partir des bandes B04, B03, B02 téléchargées."""
-    try:
-        # Chemins vers les bandes téléchargées
-        b4_path = bands_dir / 'B04.tif'
-        b3_path = bands_dir / 'B03.tif'
-        b2_path = bands_dir / 'B02.tif'
-
-        # Vérifier que tous les fichiers existent
-        for band_path in [b4_path, b3_path, b2_path]:
-            if not band_path.exists():
-                raise FileNotFoundError(f"Le fichier de bande n'a pas été trouvé : {band_path}")
-
-        # Lire les données de chaque bande
-        with rasterio.open(b4_path) as src:
-            r = src.read(1)
-        with rasterio.open(b3_path) as src:
-            g = src.read(1)
-        with rasterio.open(b2_path) as src:
-            b = src.read(1)
-
-        # Normaliser les bandes pour l'affichage (les données sont en FLOAT32)
-        def normalize(band):
-            band_min, band_max = band.min(), band.max()
-            if band_max > band_min:
-                return ((band - band_min) / (band_max - band_min) * 255).astype(np.uint8)
-            return np.zeros_like(band, dtype=np.uint8)
-
-        r_norm = normalize(r)
-        g_norm = normalize(g)
-        b_norm = normalize(b)
-
-        # Empiler les bandes pour former une image RGB
-        rgb_image = np.stack([r_norm, g_norm, b_norm], axis=-1)
-
-        # Sauvegarder l'image
-        img = Image.fromarray(rgb_image)
-        img.save(output_path, 'PNG')
-        print(f"[SUCCESS] Image RGB créée et sauvegardée dans {output_path}")
-
-    except Exception as e:
-        print(f"[ERROR] Échec de la création de l'image RGB : {e}")
-        raise
 
