@@ -38,7 +38,3 @@ dependencies:
   - pyyaml
   - click
   - pip
-  - pip:
-    - earthpy
-    - satpy
-    - planet
