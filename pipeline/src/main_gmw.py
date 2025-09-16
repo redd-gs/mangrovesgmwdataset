@@ -336,7 +336,7 @@ def main():
     if paths:
         print(f"[TIMING] Temps par image: {download_time/len(paths):.2f}s")
         print(f"[TIMING] Images par minute: {len(paths)/(download_time/60):.1f}")
-        print(f"[TIMING] Temps pour 100000 images: {len(paths)/(download_time*100000/3600):.1f}")
+        print(f"[TIMING] Temps estimé pour 100000 images: {(download_time / len(paths)) * 100000/3600:.1f}h")
 
 
 if __name__ == "__main__":

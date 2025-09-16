@@ -29,6 +29,13 @@ class Config:
         self.PATCH_SIZE_M = int(os.getenv("PATCH_SIZE_M", "8192"))
         self.PATCH_SIZE_PX = int(os.getenv("PATCH_SIZE_PX", "512"))  # Taille en pixels
         self.MAX_PATCHES = int(os.getenv("MAX_PATCHES", "60"))
+        
+        # Filtres de qualité d'image
+        self.MIN_VALID_PIXELS_RATIO = float(os.getenv("MIN_VALID_PIXELS_RATIO", "0.8"))  # 80% de pixels valides minimum
+        self.MIN_BRIGHTNESS_THRESHOLD = float(os.getenv("MIN_BRIGHTNESS_THRESHOLD", "0.02"))  # Éviter les images trop sombres
+        self.MAX_BRIGHTNESS_THRESHOLD = float(os.getenv("MAX_BRIGHTNESS_THRESHOLD", "0.95"))  # Éviter les images saturées
+        self.MIN_CONTRAST_RATIO = float(os.getenv("MIN_CONTRAST_RATIO", "0.1"))  # Contraste minimum
+        self.RETRY_COUNT = int(os.getenv("RETRY_COUNT", "3"))  # Nombre de tentatives si image invalide
 
         # Améliorations
         self.ENHANCEMENT_METHOD = os.getenv("ENHANCEMENT_METHOD", "gamma")

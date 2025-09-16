@@ -14,6 +14,196 @@ from config.context import get_sh_config
 import rasterio
 from rasterio.transform import from_bounds
 
+
+def validate_image_quality(image_data: np.ndarray, cfg) -> Tuple[bool, str]:
+    """
+    Valide la qualité d'une image téléchargée pour éviter les images noires/inutilisables.
+    
+    Args:
+        image_data: Données de l'image sous forme de array numpy
+        cfg: Configuration avec les seuils de qualité
+        
+    Returns:
+        Tuple (is_valid, reason) - True si l'image est valide, False sinon avec la raison
+    """
+    try:
+        if image_data is None or image_data.size == 0:
+            return False, "Image vide ou non trouvée"
+        
+        # Vérifier que l'image n'est pas entièrement noire
+        if np.all(image_data == 0):
+            return False, "Image entièrement noire"
+            
+        # Calculer les statistiques de l'image
+        valid_pixels = image_data[image_data > 0]
+        
+        if len(valid_pixels) == 0:
+            return False, "Aucun pixel valide trouvé"
+            
+        # Ratio de pixels valides
+        valid_ratio = len(valid_pixels) / image_data.size
+        if valid_ratio < cfg.MIN_VALID_PIXELS_RATIO:
+            return False, f"Trop peu de pixels valides ({valid_ratio:.2%} < {cfg.MIN_VALID_PIXELS_RATIO:.2%})"
+        
+        # Vérifier la luminosité moyenne
+        mean_brightness = np.mean(valid_pixels)
+        if mean_brightness < cfg.MIN_BRIGHTNESS_THRESHOLD:
+            return False, f"Image trop sombre (luminosité moyenne: {mean_brightness:.3f})"
+            
+        if mean_brightness > cfg.MAX_BRIGHTNESS_THRESHOLD:
+            return False, f"Image trop claire/saturée (luminosité moyenne: {mean_brightness:.3f})"
+        
+        # Vérifier le contraste (écart-type normalisé)
+        if len(valid_pixels) > 1:
+            contrast = np.std(valid_pixels) / (mean_brightness + 1e-6)  # Éviter division par zéro
+            if contrast < cfg.MIN_CONTRAST_RATIO:
+                return False, f"Contraste insuffisant ({contrast:.3f} < {cfg.MIN_CONTRAST_RATIO})"
+        
+        return True, "Image valide"
+        
+    except Exception as e:
+        return False, f"Erreur lors de la validation: {str(e)}"
+
+
+def download_single_with_retry(bbox: BBox,
+                              output_path: Path,
+                              enhanced: bool = False,
+                              max_retries: int = None) -> bool:
+    """
+    Version améliorée de download_single avec retry en cas d'image de mauvaise qualité.
+    
+    Args:
+        bbox: Bounding box à télécharger
+        output_path: Chemin de sortie
+        enhanced: Si True, applique des améliorations
+        max_retries: Nombre max de tentatives (utilise config si None)
+        
+    Returns:
+        True si succès, False sinon
+    """
+    cfg = settings_s2()
+    retries = max_retries if max_retries is not None else cfg.RETRY_COUNT
+    
+    for attempt in range(retries):
+        print(f"[INFO] Tentative {attempt + 1}/{retries} pour {output_path.stem}")
+        
+        # Essayer avec des fenêtres de temps légèrement décalées pour éviter les images nuageuses
+        if attempt > 0:
+            # Décaler la fenêtre temporelle pour essayer d'autres acquisitions
+            start_date, end_date = cfg.time_interval_tuple
+            from datetime import datetime, timedelta
+            import random
+            
+            try:
+                base_date = datetime.strptime(start_date, "%Y-%m-%d")
+                # Décaler de -30 à +30 jours aléatoirement
+                offset_days = random.randint(-30, 30)
+                new_start = base_date + timedelta(days=offset_days)
+                new_end = new_start + timedelta(days=60)  # Fenêtre de 60 jours
+                
+                modified_time_interval = (new_start.strftime("%Y-%m-%d"), new_end.strftime("%Y-%m-%d"))
+                print(f"[INFO] Tentative avec fenêtre temporelle: {modified_time_interval}")
+                
+                # Temporairement modifier la config pour cette tentative
+                original_interval = cfg.TIME_INTERVAL
+                cfg.TIME_INTERVAL = f"{modified_time_interval[0]}/{modified_time_interval[1]}"
+                
+            except Exception as e:
+                print(f"[WARNING] Impossible de modifier la fenêtre temporelle: {e}")
+        
+        # Essayer le téléchargement standard
+        success = download_single(bbox, output_path, enhanced)
+        
+        # Restaurer la config originale si elle a été modifiée
+        if attempt > 0 and 'original_interval' in locals():
+            cfg.TIME_INTERVAL = original_interval
+        
+        if not success:
+            print(f"[WARNING] Échec du téléchargement, tentative {attempt + 1}")
+            continue
+            
+        # Vérifier la qualité de l'image téléchargée
+        try:
+            # Déterminer la catégorie pour trouver les bons chemins
+            from utils.optimized_coverage import calculate_mangrove_coverage_optimized
+            from utils.optimized_download import get_coverage_category
+            
+            try:
+                gmw_table = f"{cfg.PG_SCHEMA}.{cfg.PG_TABLE}"
+                coverage = calculate_mangrove_coverage_optimized(bbox, gmw_table)
+                category = get_coverage_category(coverage)
+            except:
+                category = "0%"
+            
+            # Lire l'image pour validation
+            categorized_output_path = get_categorized_output_path(output_path, cfg, category)
+            if categorized_output_path.exists():
+                # Lire une bande pour validation (on peut aussi lire l'image RGB)
+                bands_dir = get_categorized_bands_dir(output_path, cfg, category)
+                b04_path = bands_dir / 'B04.tif'
+                
+                if b04_path.exists():
+                    with rasterio.open(b04_path) as src:
+                        image_data = src.read(1)
+                    
+                    is_valid, reason = validate_image_quality(image_data, cfg)
+                    
+                    if is_valid:
+                        print(f"[SUCCESS] Image valide: {reason}")
+                        return True
+                    else:
+                        print(f"[WARNING] Image invalide: {reason}")
+                        # Supprimer l'image invalide
+                        cleanup_invalid_image(output_path, cfg, category)
+                        continue
+                        
+        except Exception as e:
+            print(f"[WARNING] Erreur lors de la validation: {e}")
+            continue
+    
+    print(f"[ERROR] Échec après {retries} tentatives pour {output_path.stem}")
+    return False
+
+
+def get_categorized_output_path(output_path: Path, cfg, category: str = None) -> Path:
+    """Obtient le chemin de sortie catégorisé."""
+    if category is None:
+        # Essayer de déterminer la catégorie depuis le chemin de sortie
+        # ou utiliser une catégorie par défaut
+        category = "0%"
+    return cfg.OUTPUT_DIR / category / output_path.name
+
+
+def get_categorized_bands_dir(output_path: Path, cfg, category: str = None) -> Path:
+    """Obtient le répertoire des bandes catégorisées."""
+    if category is None:
+        category = "0%"
+    return cfg.BANDS_DIR / category / output_path.stem
+
+
+def cleanup_invalid_image(output_path: Path, cfg, category: str = None):
+    """Nettoie les fichiers d'une image invalide."""
+    try:
+        import shutil
+        
+        # Supprimer l'image RGB
+        categorized_output = get_categorized_output_path(output_path, cfg, category)
+        if categorized_output.exists():
+            categorized_output.unlink()
+            
+        # Supprimer le dossier des bandes
+        bands_dir = get_categorized_bands_dir(output_path, cfg, category)
+        if bands_dir.exists():
+            shutil.rmtree(bands_dir)
+            
+        print(f"[INFO] Fichiers invalides supprimés pour {output_path.stem}")
+        
+    except Exception as e:
+        print(f"[WARNING] Erreur lors du nettoyage: {e}")
+
+
+# Individual band evalscripts for downloading separate TIFF files
+
 # Individual band evalscripts for downloading separate TIFF files
 BAND_EVALSCRIPTS = {
     'B02': """//VERSION=3
@@ -105,18 +295,17 @@ def download_single(bbox: BBox,
     # Calculer la catégorie de couverture de mangroves
     try:
         # Import local pour éviter les imports circulaires
-        import sys
-        sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-        from dataset.mangrove_dataset import calculate_mangrove_coverage, get_coverage_category
+        from utils.optimized_coverage import calculate_mangrove_coverage_optimized
+        from utils.optimized_download import get_coverage_category
         
         gmw_table = f"{cfg.PG_SCHEMA}.{cfg.PG_TABLE}"
-        coverage = calculate_mangrove_coverage(bbox, gmw_table)
+        coverage = calculate_mangrove_coverage_optimized(bbox, gmw_table)
         category = get_coverage_category(coverage)
         print(f"[INFO] Couverture de mangroves calculée: {coverage:.2f}% - Catégorie: {category}")
     except Exception as e:
         print(f"[WARNING] Impossible de calculer la couverture de mangroves: {e}")
-        print("[WARNING] Utilisation de la catégorie par défaut: no_mangroves")
-        category = "no_mangroves"
+        print("[WARNING] Utilisation de la catégorie par défaut: 0%")
+        category = "0%"
         coverage = 0
 
     # Modifier les chemins de sortie pour inclure la catégorie
@@ -137,17 +326,18 @@ def download_single(bbox: BBox,
     # Calculate image size
     image_size = bbox_to_dimensions(bbox, resolution=cfg.IMAGE_RESOLUTION)
     
-    # Download individual bands
+    # Download individual bands with cloud filtering
     bands_data = {}
     for band_name, evalscript in BAND_EVALSCRIPTS.items():
-        print(f"[INFO] Downloading band {band_name}...")
+        print(f"[INFO] Downloading band {band_name} with cloud cover < {cfg.MAX_CLOUD_COVER}%...")
         req = SentinelHubRequest(
             evalscript=evalscript,
             input_data=[
                 SentinelHubRequest.input_data(
                     data_collection=DataCollection.SENTINEL2_L2A,
                     time_interval=(start_date, end_date),
-                    mosaicking_order="leastCC"
+                    mosaicking_order="leastCC",
+                    maxcc=cfg.MAX_CLOUD_COVER / 100.0  # Conversion en ratio (0-1)
                 )
             ],
             responses=[SentinelHubRequest.output_response("default", MimeType.TIFF)],
@@ -159,13 +349,20 @@ def download_single(bbox: BBox,
         try:
             data = req.get_data()
             if data and isinstance(data[0], np.ndarray):
+                # Valider la qualité de la bande téléchargée
+                is_valid, reason = validate_image_quality(data[0], cfg)
+                if not is_valid:
+                    print(f"[WARNING] Bande {band_name} invalide: {reason}")
+                    return False
+                    
                 bands_data[band_name] = data[0]
-                print(f"[SUCCESS] Downloaded band {band_name}")
+                print(f"[SUCCESS] Downloaded and validated band {band_name}")
             else:
                 print(f"[ERROR] Failed to download band {band_name}")
                 return False
         except Exception as e:
             print(f"[ERROR] Exception downloading band {band_name}: {e}")
+            return False
             return False
 
     # Save individual bands as TIFF files
@@ -219,7 +416,8 @@ def run_download(bboxes: Iterable[BBox],
     def task(item):
         idx, bb = item
         out = cfg.OUTPUT_DIR / f"{prefix}_{idx}.png"
-        ok = download_single(bb, out, enhanced=enhanced)
+        # Utiliser la version avec retry pour une meilleure qualité
+        ok = download_single_with_retry(bb, out, enhanced=enhanced)
         return out if ok else None
 
     items = list(enumerate(bboxes, start=1))

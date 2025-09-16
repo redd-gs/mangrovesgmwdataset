@@ -230,7 +230,8 @@ function evaluatePixel(sample) {{
                     SentinelHubRequest.input_data(
                         data_collection=DataCollection.SENTINEL2_L2A,
                         time_interval=time_interval,
-                        mosaicking_order='leastCC'
+                        mosaicking_order='leastCC',
+                        maxcc=cfg.MAX_CLOUD_COVER / 100.0  # Conversion en ratio (0-1)
                     )
                 ],
                 responses=[
@@ -244,6 +245,14 @@ function evaluatePixel(sample) {{
             data = request.get_data()
             
             if data and len(data) > 0 and isinstance(data[0], np.ndarray):
+                # Vérifier la qualité des données avant de sauvegarder
+                from sentinel.download_s2 import validate_image_quality
+                is_valid, reason = validate_image_quality(data[0], cfg)
+                
+                if not is_valid:
+                    print(f"[WARNING] Bande {band} invalide: {reason}")
+                    raise ValueError(f"Bande {band} de mauvaise qualité: {reason}")
+                
                 # Sauvegarder avec rasterio au lieu d'écrire les bytes bruts
                 band_path = categorized_bands_dir / f"{band}.tif"
                 band_data = data[0]
@@ -423,7 +432,8 @@ function evaluatePixel(sample) {{
                     SentinelHubRequest.input_data(
                         data_collection=DataCollection.SENTINEL2_L2A,
                         time_interval=time_interval,
-                        mosaicking_order='leastCC'
+                        mosaicking_order='leastCC',
+                        maxcc=cfg.MAX_CLOUD_COVER / 100.0  # Conversion en ratio (0-1)
                     )
                 ],
                 responses=[
@@ -437,6 +447,14 @@ function evaluatePixel(sample) {{
             data = request.get_data()
             
             if data and len(data) > 0 and isinstance(data[0], np.ndarray):
+                # Vérifier la qualité des données avant de sauvegarder
+                from sentinel.download_s2 import validate_image_quality
+                is_valid, reason = validate_image_quality(data[0], cfg)
+                
+                if not is_valid:
+                    print(f"[WARNING] Bande {band} invalide: {reason}")
+                    raise ValueError(f"Bande {band} de mauvaise qualité: {reason}")
+                
                 band_path = categorized_bands_dir / f"{band}.tif"
                 band_data = data[0]
                 
